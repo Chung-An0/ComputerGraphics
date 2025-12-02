@@ -21,7 +21,6 @@ void init() {
     glCullFace(GL_BACK);
 
     [cite_start]// 3. 조명 설정 (입체감을 주기 위해 필수) [cite: 1282-1286]
-        glEnable(GL_LIGHTING);   // 조명 계산 켜기
     glEnable(GL_LIGHT0);     // 0번 광원 켜기
 
     // 광원 위치 및 색상 설정 (흰색 빛)
