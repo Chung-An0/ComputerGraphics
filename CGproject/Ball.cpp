@@ -21,12 +21,16 @@ void Ball::Reset(float startX) {
     angularVelocity = vec3(0.0f);
     isRolling = false;
     isInGutter = false;
+    rollTime = 0.0f;
+    startX = 0.0f;
     rotationAngle = 0.0f;
 }
 
 void Ball::Update(float dt) {
     if (!isRolling) return;
     
+    //경과 시간 업데이트
+    rollTime += dt;
     // 스핀 효과 적용
     ApplySpinEffect(dt);
     
@@ -64,36 +68,64 @@ void Ball::Launch(float power, SpinType spin) {
     velocity = vec3(0.0f, 0.0f, -baseSpeed);
     
     // 스핀에 따른 각속도 설정
-    float spinStrength = 1.0f;
+    // 스핀에 따른 초기 방향 및 각속도 설정
+    // 스핀에 따른 초기 방향 및 각속도 설정
+    float spinStrength = 0.3f;   // 회전량 감소
+    // 시작 위치 및 시간 기록
+    startX = position.x;
+    rollTime = 0.0f;
+
+    // 목표점 계산: 레인 중간 지점에서 (현재X + 스핀방향으로 레인폭 1/5)
+    float laneWidthFifth = LANE_WIDTH / 5.0f;
+    float midZ = -LANE_LENGTH / 2.0f;
+
     switch (spin) {
-        case SpinType::STRAIGHT:
-            angularVelocity = vec3(0.0f);
-            break;
-        case SpinType::LEFT_HOOK:
-            angularVelocity = vec3(0.0f, spinStrength, 0.0f);
-            break;
-        case SpinType::RIGHT_HOOK:
-            angularVelocity = vec3(0.0f, -spinStrength, 0.0f);
-            break;
+    case SpinType::STRAIGHT:
+        angularVelocity = vec3(0.0f);
+        break;
+    case SpinType::LEFT_HOOK:
+    {
+        // 목표: 현재 X + 오른쪽으로 1/5
+        float targetX = startX + laneWidthFifth;
+        // 목표점까지의 X 방향 속도 계산
+        float timeToMid = abs(midZ / velocity.z);
+        velocity.x = (targetX - startX) / timeToMid;
+        angularVelocity = vec3(0.0f, 1.0f, 0.0f);  // 훅 방향 저장용
+    }
+    break;
+    case SpinType::RIGHT_HOOK:
+    {
+        // 목표: 현재 X + 왼쪽으로 1/5
+        float targetX = startX - laneWidthFifth;
+        float timeToMid = abs(midZ / velocity.z);
+        velocity.x = (targetX - startX) / timeToMid;
+        angularVelocity = vec3(0.0f, -1.0f, 0.0f);  // 훅 방향 저장용
+    }
+    break;
     }
 }
 
 void Ball::ApplySpinEffect(float dt) {
-    if (isInGutter) return;
-    
-    // 마그누스 효과: 스핀 방향으로 공이 휘어짐
-    // 레인 후반부에서 더 강하게 작용 (오일 없는 구간)
-    float laneProgress = -position.z / LANE_LENGTH;
-    float magnusCoeff = 0.15f;
-    
-    // 레인 뒷부분에서 훅이 더 강해짐
-    if (laneProgress > 0.6f) {
-        magnusCoeff = 0.4f * (laneProgress - 0.4f);
-    }
-    
-    // 마그누스 힘 = 각속도 × 속도
-    vec3 magnusForce = cross(angularVelocity, velocity) * magnusCoeff;
-    velocity += magnusForce * dt;
+    // 스핀 없으면 무시
+    if (abs(angularVelocity.y) < 0.01f) return;
+
+    // 0.8초 이전: 직진 구간 (훅 없음)
+    if (rollTime < 0.8f) return;
+
+    // 0.8초 이후: 훅 구간
+    float hookTime = rollTime - 0.8f;
+    float hookStrength = hookTime * 3.0f;  // 시간에 따라 훅 강해짐
+    hookStrength = fmin(hookStrength, 4.0f);  // 최대값 제한
+
+    // 훅 방향 (angularVelocity.y > 0 이면 Left, 왼쪽으로 휘기)
+    float hookDirection = (angularVelocity.y > 0) ? -1.0f : 1.0f;
+
+    // X 방향 가속도 적용 (휘어지는 효과)
+    velocity.x += hookDirection * hookStrength * dt;
+
+    // 속도 제한
+    float maxSideSpeed = 2.5f;
+    velocity.x = fmax(-maxSideSpeed, fmin(maxSideSpeed, velocity.x));
 }
 
 void Ball::ApplyFriction(float dt) {

@@ -15,23 +15,7 @@ int main(int argc, char** argv) {
         return -1;
     }
     
-    cout << "==============================" << endl;
-    cout << "    BOWLING GAME - OpenGL     " << endl;
-    cout << "==============================" << endl;
-    cout << endl;
-    cout << "Controls:" << endl;
-    cout << "  W/S    - Look Up/Down" << endl;
-    cout << "  A/D    - Move Left/Right" << endl;
-    cout << "  SPACE  - Hold to charge, release to throw" << endl;
-    cout << "  M      - Toggle Menu" << endl;
-    cout << "  1/2/3  - Select Ball Color" << endl;
-    cout << "  Q      - Left Hook Spin" << endl;
-    cout << "  E      - Right Hook Spin" << endl;
-    cout << "  R      - Straight / Restart Game" << endl;
-    cout << "  ESC    - Exit" << endl;
-    cout << endl;
-    cout << "OpenGL Version: " << glGetString(GL_VERSION) << endl;
-    cout << "==============================" << endl;
+    //콘솔 메시지 추가 예정
     
     // 게임 초기화
     Game::Instance().Init();

@@ -20,6 +20,8 @@ public:
     // 상태
     bool isRolling;
     bool isInGutter;
+    float rollTime;         // 굴린 후 경과 시간
+    float startX;           // 시작 X 위치
     
     // 텍스처/색상
     GLuint textureID;

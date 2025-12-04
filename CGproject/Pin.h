@@ -30,7 +30,7 @@ public:
     void Update(float dt);
     
     // 공과 충돌 체크
-    bool CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVelocity);
+    bool CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity);
     
     // 다른 핀과 충돌 체크
     bool CheckCollisionWithPin(Pin& other);
@@ -66,7 +66,7 @@ public:
     void Update(float dt);
     
     // 공과 충돌 체크
-    void CheckBallCollision(vec3 ballPos, float ballRadius, vec3 ballVelocity);
+    void CheckBallCollision(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity);
     
     // 핀끼리 충돌 체크
     void CheckPinCollisions();

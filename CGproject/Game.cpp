@@ -174,7 +174,7 @@ void Game::UpdateRolling() {
         length(ball.velocity) > 0.1f ? normalize(ball.velocity) : vec3(0, 0, -1));
     
     // 핀 충돌 체크
-    pins.CheckBallCollision(ball.position, ball.radius, ball.velocity);
+    pins.CheckBallCollision(ball.position, ball.radius, ball.velocity, ball.angularVelocity);
     
     // 공이 핀 영역 지나거나 멈추면
     if (ball.position.z < PIN_START_Z - 2.0f || ball.IsStopped() || ball.isInGutter) {

@@ -236,60 +236,104 @@ void UI::DrawPowerGauge() {
 }
 
 // 3D 천장 점수판 (W로 올려다볼 때 보임)
+// 2D 점수판 (화면 상단 고정)
 void UI::DrawScoreboard3D() {
-    // 고개를 들었을 때만 보이도록 (pitch > 15도)
-    if (cameraPitch < 15.0f) return;
+    Begin2D();
 
-    glPushMatrix();
+    float boardX = 140;
+    float boardY = WINDOW_HEIGHT - 80;
+    float cellWidth = 90;
+    float cellHeight = 50;
 
-    // 천장 위치에 점수판 배치
-    glTranslatef(0.0f, 2.8f, -2.0f);  // 천장 높이, 플레이어 앞쪽
-    glRotatef(-30.0f, 1.0f, 0.0f, 0.0f);  // 아래를 향하도록 기울임
-
-    // 점수판 배경
-    float boardWidth = 3.0f;
-    float boardHeight = 0.6f;
-
-    GLfloat matBoard[] = { 0.1f, 0.1f, 0.3f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matBoard);
-
+    // 배경
+    glColor4f(0.0f, 0.1f, 0.3f, 0.9f);
     glBegin(GL_QUADS);
-    glNormal3f(0.0f, 0.0f, 1.0f);
-    glVertex3f(-boardWidth / 2, -boardHeight / 2, 0.0f);
-    glVertex3f(boardWidth / 2, -boardHeight / 2, 0.0f);
-    glVertex3f(boardWidth / 2, boardHeight / 2, 0.0f);
-    glVertex3f(-boardWidth / 2, boardHeight / 2, 0.0f);
+    glVertex2f(boardX - 10, boardY - cellHeight - 10);
+    glVertex2f(boardX + cellWidth * 10 + 60, boardY - cellHeight - 10);
+    glVertex2f(boardX + cellWidth * 10 + 60, boardY + 30);
+    glVertex2f(boardX - 10, boardY + 30);
     glEnd();
 
-    // 점수판 테두리
-    GLfloat matFrame[] = { 0.8f, 0.7f, 0.2f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matFrame);
-
-    glLineWidth(3.0f);
+    // 테두리
+    glColor3f(0.3f, 0.5f, 0.8f);
+    glLineWidth(2.0f);
     glBegin(GL_LINE_LOOP);
-    glVertex3f(-boardWidth / 2, -boardHeight / 2, 0.01f);
-    glVertex3f(boardWidth / 2, -boardHeight / 2, 0.01f);
-    glVertex3f(boardWidth / 2, boardHeight / 2, 0.01f);
-    glVertex3f(-boardWidth / 2, boardHeight / 2, 0.01f);
+    glVertex2f(boardX - 10, boardY - cellHeight - 10);
+    glVertex2f(boardX + cellWidth * 10 + 60, boardY - cellHeight - 10);
+    glVertex2f(boardX + cellWidth * 10 + 60, boardY + 30);
+    glVertex2f(boardX - 10, boardY + 30);
     glEnd();
 
-    // 프레임 구분선
-    GLfloat matLine[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matLine);
-
-    float cellWidth = boardWidth / 10.0f;
-    glBegin(GL_LINES);
-    for (int i = 1; i < 10; i++) {
-        float x = -boardWidth / 2 + i * cellWidth;
-        glVertex3f(x, -boardHeight / 2, 0.01f);
-        glVertex3f(x, boardHeight / 2, 0.01f);
+    // 프레임 번호 (1~10)
+    glColor3f(0.0f, 0.8f, 0.8f);
+    for (int i = 0; i < 10; i++) {
+        char num[3];
+        sprintf(num, "%d", i + 1);
+        DrawTextCentered(boardX + i * cellWidth + cellWidth / 2, boardY + 10, num);
     }
-    // 중간 가로선
-    glVertex3f(-boardWidth / 2, 0.0f, 0.01f);
-    glVertex3f(boardWidth / 2, 0.0f, 0.01f);
+
+    // 각 프레임 점수
+    for (int i = 0; i < 10; i++) {
+        float x = boardX + i * cellWidth;
+
+        // 셀 구분선
+        glColor3f(0.3f, 0.5f, 0.8f);
+        glBegin(GL_LINES);
+        glVertex2f(x, boardY);
+        glVertex2f(x, boardY - cellHeight);
+        glEnd();
+
+        // 투구 결과 표시
+        glColor3f(1.0f, 1.0f, 1.0f);
+        char throwStr[10] = "";
+
+        if (frames[i].isComplete || i < currentFrame || (i == currentFrame && currentThrow == 2)) {
+            if (frames[i].isStrike) {
+                strcpy(throwStr, "S");
+            }
+            else if (frames[i].isSpare) {
+                sprintf(throwStr, "%d /", frames[i].firstThrow);
+            }
+            else if (frames[i].isComplete) {
+                sprintf(throwStr, "%d %d", frames[i].firstThrow, frames[i].secondThrow);
+            }
+            else if (i == currentFrame && currentThrow == 2) {
+                sprintf(throwStr, "%d", frames[i].firstThrow);
+            }
+        }
+
+        DrawTextCentered(x + cellWidth / 2, boardY - 20, throwStr);
+
+        // 누적 점수
+        if (frames[i].isComplete) {
+            glColor3f(0.8f, 0.8f, 0.0f);
+            char scoreStr[5];
+            sprintf(scoreStr, "%d", frames[i].totalScore);
+            DrawTextCentered(x + cellWidth / 2, boardY - 42, scoreStr);
+        }
+    }
+
+    // 마지막 구분선
+    glColor3f(0.3f, 0.5f, 0.8f);
+    glBegin(GL_LINES);
+    glVertex2f(boardX + 10 * cellWidth, boardY);
+    glVertex2f(boardX + 10 * cellWidth, boardY - cellHeight);
     glEnd();
 
-    glPopMatrix();
+    // 총점 표시
+    glColor3f(1.0f, 1.0f, 1.0f);
+    DrawText(boardX + 10 * cellWidth + 10, boardY + 10, "TOTAL");
+
+    int totalScore = 0;
+    for (int i = 0; i < 10; i++) {
+        if (frames[i].isComplete) totalScore = frames[i].totalScore;
+    }
+    char totalStr[5];
+    sprintf(totalStr, "%d", totalScore);
+    glColor3f(0.0f, 1.0f, 0.0f);
+    DrawTextCentered(boardX + 10 * cellWidth + 35, boardY - 25, totalStr);
+
+    End2D();
 }
 
 void UI::DrawSpinButtons() {
@@ -563,23 +607,6 @@ void UI::DrawGameState(GameState state) {
     }
 
     DrawTextCentered(WINDOW_WIDTH / 2, WINDOW_HEIGHT - 30, stateText);
-
-    // 현재 프레임/투구 표시
-    char frameInfo[50];
-    sprintf(frameInfo, "Frame %d - Throw %d", currentFrame + 1, currentThrow);
-    glColor3f(0.8f, 0.8f, 0.0f);
-    DrawText(20, WINDOW_HEIGHT - 30, frameInfo);
-
-    // 현재 점수 표시
-    int totalScore = 0;
-    for (int i = 0; i < 10; i++) {
-        if (frames[i].isComplete) {
-            totalScore = frames[i].totalScore;
-        }
-    }
-    char scoreInfo[30];
-    sprintf(scoreInfo, "Score: %d", totalScore);
-    DrawText(20, WINDOW_HEIGHT - 55, scoreInfo);
 
     End2D();
 }
