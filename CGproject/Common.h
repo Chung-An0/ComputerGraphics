@@ -15,6 +15,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <cmath>
 
 // 네임스페이스
