@@ -3,218 +3,261 @@
 Ball::Ball() {
     radius = BALL_RADIUS;
     mass = BALL_MASS;
-    spinType = SpinType::STRAIGHT;
-    isRolling = false;
-    isInGutter = false;
+    ballType = 0;
+    rollTime = 0.0f;
+    totalTime = 0.0f;
+    useSpline = false;
+    Reset();
+}
+
+void Ball::Reset() {
+    position = vec3(0.0f, radius, 1.0f);  // 레인 시작 위치 (z=1.0f, 파울라인 뒤)
+    velocity = vec3(0.0f);
+    angularVelocity = vec3(0.0f);
     rotationAngle = 0.0f;
     rotationAxis = vec3(1.0f, 0.0f, 0.0f);
-    textureID = 0;
-    color = vec3(0.8f, 0.1f, 0.1f);  // 기본 빨간 공
-    ballType = 0;
-    
-    Reset(0.0f);
+    isRolling = false;
+    isInGutter = false;
+    spinType = SpinType::STRAIGHT;
+    rollTime = 0.0f;
+    totalTime = 0.0f;
+    useSpline = false;
+    splineP0 = vec3(0.0f);
+    splineP1 = vec3(0.0f);
+    splineP2 = vec3(0.0f);
+    splineP3 = vec3(0.0f);
 }
 
 void Ball::Reset(float startX) {
-    position = vec3(startX, radius, 0.5f);  // 파울라인 앞
-    velocity = vec3(0.0f);
-    angularVelocity = vec3(0.0f);
-    isRolling = false;
-    isInGutter = false;
+    Reset();
+    position.x = startX;
+}
+
+bool Ball::IsStopped() {
+    return !isRolling || length(velocity) < 0.1f;
+}
+
+void Ball::Launch(float power, SpinType spin) {
+    isRolling = true;
+    spinType = spin;
     rollTime = 0.0f;
-    startX = 0.0f;
-    rotationAngle = 0.0f;
+    isInGutter = false;
+
+    // 기본 전진 속도 (파워에 비례)
+    float baseSpeed = power * 10.0f + 3.0f;
+    velocity = vec3(0.0f, 0.0f, -baseSpeed);
+
+    // 스플라인 설정 (스핀이 있을 때만)
+    if (spin != SpinType::STRAIGHT) {
+        useSpline = true;
+        SetupSpline(baseSpeed, spin);
+    }
+    else {
+        useSpline = false;
+        angularVelocity = vec3(0.0f);
+    }
+}
+
+void Ball::SetupSpline(float baseSpeed, SpinType spin) {
+    // 핀까지 거리
+    float distanceToPins = abs(PIN_START_Z - position.z);
+
+    // 전체 이동 시간 (거리 / 속도)
+    totalTime = distanceToPins / baseSpeed;
+
+    // 레인 폭의 1/5
+    float laneOffset = LANE_WIDTH / 5.0f;
+
+    // 0.8초 시점이 전체의 몇 %인지
+    float hookStartRatio = 0.8f / totalTime;
+    if (hookStartRatio > 0.4f) hookStartRatio = 0.4f;  // 최대 40% 지점
+
+    // 중간 지점 Z 좌표
+    float midZ = position.z - distanceToPins * hookStartRatio;
+
+    // 제어점 설정
+    splineP1 = position;  // 시작점
+
+    if (spin == SpinType::LEFT_HOOK) {
+        // P0: 시작점 뒤 (방향 결정용)
+        splineP0 = position + vec3(-laneOffset * 0.3f, 0.0f, 0.5f);
+        // P2: 중간점 - 오른쪽으로 1/5 이동
+        splineP2 = vec3(position.x + laneOffset, radius, midZ);
+        // P3: 끝점 - 가운데로 돌아옴 (핀 위치)
+        splineP3 = vec3(position.x - laneOffset * 0.3f, radius, PIN_START_Z);
+    }
+    else {  // RIGHT_HOOK
+        splineP0 = position + vec3(laneOffset * 0.3f, 0.0f, 0.5f);
+        splineP2 = vec3(position.x - laneOffset, radius, midZ);
+        splineP3 = vec3(position.x + laneOffset * 0.3f, radius, PIN_START_Z);
+    }
+
+    // 회전 방향 저장
+    angularVelocity = vec3(0.0f, (spin == SpinType::LEFT_HOOK) ? 1.0f : -1.0f, 0.0f);
+}
+
+vec3 Ball::EvaluateCardinalSpline(float t) {
+    // Cardinal Spline (Catmull-Rom) 공식
+    // tension = 0.5 (기본값)
+    float tension = 0.5f;
+
+    float t2 = t * t;
+    float t3 = t2 * t;
+
+    // 기반 함수 (Basis functions)
+    float b0 = -tension * t3 + 2.0f * tension * t2 - tension * t;
+    float b1 = (2.0f - tension) * t3 + (tension - 3.0f) * t2 + 1.0f;
+    float b2 = (tension - 2.0f) * t3 + (3.0f - 2.0f * tension) * t2 + tension * t;
+    float b3 = tension * t3 - tension * t2;
+
+    // 보간된 위치
+    vec3 result = splineP0 * b0 + splineP1 * b1 + splineP2 * b2 + splineP3 * b3;
+    return result;
 }
 
 void Ball::Update(float dt) {
     if (!isRolling) return;
-    
-    //경과 시간 업데이트
+
     rollTime += dt;
-    // 스핀 효과 적용
-    ApplySpinEffect(dt);
-    
-    // 마찰 적용
-    ApplyFriction(dt);
-    
-    // 위치 업데이트
-    position += velocity * dt;
-    
-    // 회전 업데이트 (시각적 효과)
-    float speed = length(velocity);
-    if (speed > 0.01f) {
-        // 진행 방향에 수직인 축으로 회전
-        rotationAxis = normalize(cross(vec3(0.0f, 1.0f, 0.0f), velocity));
-        rotationAngle += (speed / radius) * dt * 180.0f / 3.14159f;
-        if (rotationAngle > 360.0f) rotationAngle -= 360.0f;
+
+    if (useSpline && totalTime > 0.0f) {
+        // 스플라인 기반 이동
+        float t = rollTime / totalTime;
+
+        if (t >= 1.0f) {
+            // 스플라인 끝 - 직진으로 전환
+            t = 1.0f;
+            useSpline = false;
+            position = splineP3;
+            position.y = radius;
+            // 핀 방향으로 계속 직진
+            velocity = vec3(0.0f, 0.0f, -3.0f);
+        }
+        else {
+            vec3 newPos = EvaluateCardinalSpline(t);
+
+            // 속도 계산 (위치 변화로부터)
+            if (dt > 0.0001f) {
+                velocity = (newPos - position) / dt;
+            }
+            position = newPos;
+            position.y = radius;
+        }
     }
-    
+    else {
+        // 일반 물리 기반 이동
+        ApplyFriction(dt);
+        position += velocity * dt;
+    }
+
+    // 높이 보정
+    if (position.y < radius) {
+        position.y = radius;
+    }
+
     // 거터 체크
     CheckGutter();
-    
-    // 공이 레인 끝을 벗어났는지 체크
-    if (position.z < -LANE_LENGTH - 1.0f) {
-        isRolling = false;
+
+    // 회전 애니메이션
+    float speed = length(velocity);
+    if (speed > 0.01f) {
+        rotationAngle += speed * dt * 100.0f;
+        vec3 cross_result = cross(vec3(0, 1, 0), velocity);
+        if (length(cross_result) > 0.001f) {
+            rotationAxis = normalize(cross_result);
+        }
     }
-}
 
-void Ball::Launch(float power, SpinType spin) {
-    spinType = spin;
-    isRolling = true;
-    isInGutter = false;
-    
-    // 기본 속도 (앞으로)
-    float baseSpeed = power * 8.0f;  // 파워에 따라 속도 조절
-    velocity = vec3(0.0f, 0.0f, -baseSpeed);
-    
-    // 스핀에 따른 각속도 설정
-    // 스핀에 따른 초기 방향 및 각속도 설정
-    // 스핀에 따른 초기 방향 및 각속도 설정
-    float spinStrength = 0.3f;   // 회전량 감소
-    // 시작 위치 및 시간 기록
-    startX = position.x;
-    rollTime = 0.0f;
-
-    // 목표점 계산: 레인 중간 지점에서 (현재X + 스핀방향으로 레인폭 1/5)
-    float laneWidthFifth = LANE_WIDTH / 5.0f;
-    float midZ = -LANE_LENGTH / 2.0f;
-
-    switch (spin) {
-    case SpinType::STRAIGHT:
-        angularVelocity = vec3(0.0f);
-        break;
-    case SpinType::LEFT_HOOK:
-    {
-        // 목표: 현재 X + 오른쪽으로 1/5
-        float targetX = startX + laneWidthFifth;
-        // 목표점까지의 X 방향 속도 계산
-        float timeToMid = abs(midZ / velocity.z);
-        velocity.x = (targetX - startX) / timeToMid;
-        angularVelocity = vec3(0.0f, 1.0f, 0.0f);  // 훅 방향 저장용
+    // 레인 끝 도달 또는 정지 체크
+    if (position.z < PIN_START_Z - 2.0f || length(velocity) < 0.1f) {
+        velocity *= 0.8f;
+        if (length(velocity) < 0.05f) {
+            isRolling = false;
+            velocity = vec3(0.0f);
+        }
     }
-    break;
-    case SpinType::RIGHT_HOOK:
-    {
-        // 목표: 현재 X + 왼쪽으로 1/5
-        float targetX = startX - laneWidthFifth;
-        float timeToMid = abs(midZ / velocity.z);
-        velocity.x = (targetX - startX) / timeToMid;
-        angularVelocity = vec3(0.0f, -1.0f, 0.0f);  // 훅 방향 저장용
-    }
-    break;
-    }
-}
-
-void Ball::ApplySpinEffect(float dt) {
-    // 스핀 없으면 무시
-    if (abs(angularVelocity.y) < 0.01f) return;
-
-    // 0.8초 이전: 직진 구간 (훅 없음)
-    if (rollTime < 0.8f) return;
-
-    // 0.8초 이후: 훅 구간
-    float hookTime = rollTime - 0.8f;
-    float hookStrength = hookTime * 3.0f;  // 시간에 따라 훅 강해짐
-    hookStrength = fmin(hookStrength, 4.0f);  // 최대값 제한
-
-    // 훅 방향 (angularVelocity.y > 0 이면 Left, 왼쪽으로 휘기)
-    float hookDirection = (angularVelocity.y > 0) ? -1.0f : 1.0f;
-
-    // X 방향 가속도 적용 (휘어지는 효과)
-    velocity.x += hookDirection * hookStrength * dt;
-
-    // 속도 제한
-    float maxSideSpeed = 2.5f;
-    velocity.x = fmax(-maxSideSpeed, fmin(maxSideSpeed, velocity.x));
 }
 
 void Ball::ApplyFriction(float dt) {
-    if (length(velocity) < 0.01f) {
-        velocity = vec3(0.0f);
-        return;
+    float speed = length(velocity);
+    if (speed < 0.01f) return;
+
+    float frictionCoeff = FRICTION;
+    if (isInGutter) {
+        frictionCoeff *= 2.0f;
     }
-    
-    float frictionCoeff = isInGutter ? FRICTION * 2.0f : FRICTION;
-    vec3 frictionForce = -normalize(velocity) * frictionCoeff * mass * abs(GRAVITY);
-    velocity += frictionForce / mass * dt;
-    
-    // 최소 속도 이하면 정지
-    if (length(velocity) < 0.1f) {
+
+    vec3 frictionDir = -normalize(velocity);
+    vec3 frictionForce = frictionDir * frictionCoeff * mass * abs(GRAVITY);
+    velocity += frictionForce * dt;
+
+    if (length(velocity) < 0.05f) {
         velocity = vec3(0.0f);
     }
 }
 
 void Ball::CheckGutter() {
     float gutterEdge = LANE_WIDTH / 2.0f;
-    
+
     if (abs(position.x) > gutterEdge) {
         isInGutter = true;
-        
-        // 거터 안에서 이동 (살짝 아래로)
-        if (position.y > radius * 0.7f) {
-            position.y -= 0.01f;
+
+        if (position.x > gutterEdge) {
+            position.x = gutterEdge + GUTTER_WIDTH / 2.0f;
         }
-        
-        // 거터 경계에 맞춤
-        float gutterCenter = (gutterEdge + GUTTER_WIDTH / 2.0f) * sign(position.x);
-        position.x = gutterCenter;
-        
-        // 옆으로 가는 속도 제거
+        else {
+            position.x = -gutterEdge - GUTTER_WIDTH / 2.0f;
+        }
+
         velocity.x = 0.0f;
+        useSpline = false;
     }
 }
 
 void Ball::Draw() {
+    glDisable(GL_TEXTURE_2D);
+
     glPushMatrix();
-    
+
     glTranslatef(position.x, position.y, position.z);
     glRotatef(rotationAngle, rotationAxis.x, rotationAxis.y, rotationAxis.z);
-    
-    // 색상 설정
-    GLfloat matDiffuse[] = { color.r, color.g, color.b, 1.0f };
-    GLfloat matSpecular[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-    GLfloat matShininess[] = { 80.0f };
-    
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+
+    // 공 색상 (ballType에 따라)
+    GLfloat matColor[4];
+
+    switch (ballType) {
+    case 0:  // 빨강
+        matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
+        break;
+    case 1:  // 파랑
+        matColor[0] = 0.1f; matColor[1] = 0.3f; matColor[2] = 0.9f; matColor[3] = 1.0f;
+        break;
+    case 2:  // 초록
+        matColor[0] = 0.1f; matColor[1] = 0.8f; matColor[2] = 0.2f; matColor[3] = 1.0f;
+        break;
+    default:
+        matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
+        break;
+    }
+
+    GLfloat matAmbient[] = { matColor[0] * 0.3f, matColor[1] * 0.3f, matColor[2] * 0.3f, 1.0f };
+    GLfloat matSpecular[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+    GLfloat matShininess[] = { 100.0f };
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, matAmbient);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, matColor);
     glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
-    
-    // 텍스처가 있으면 적용
-    if (textureID > 0) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-    }
-    
-    // 구 그리기
+
     GLUquadric* quad = gluNewQuadric();
-    gluQuadricTexture(quad, GL_TRUE);
-    gluQuadricNormals(quad, GLU_SMOOTH);
     gluSphere(quad, radius, 32, 32);
     gluDeleteQuadric(quad);
-    
-    if (textureID > 0) {
-        glDisable(GL_TEXTURE_2D);
-    }
-    
+
     glPopMatrix();
 }
 
 void Ball::SetBallType(int type) {
-    ballType = type % 3;  // 0, 1, 2 순환
-    
-    switch (ballType) {
-        case 0:  // 빨간 공
-            color = vec3(0.8f, 0.1f, 0.1f);
-            break;
-        case 1:  // 파란 공
-            color = vec3(0.1f, 0.2f, 0.8f);
-            break;
-        case 2:  // 녹색 공
-            color = vec3(0.1f, 0.7f, 0.2f);
-            break;
-    }
-}
-
-bool Ball::IsStopped() {
-    return !isRolling || length(velocity) < 0.05f;
+    if (type < 0) type = 0;
+    if (type > 2) type = 2;
+    ballType = type;
 }

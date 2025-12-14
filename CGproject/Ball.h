@@ -3,58 +3,59 @@
 
 class Ball {
 public:
-    // 물리 속성
+    // 기본 속성
     vec3 position;
     vec3 velocity;
-    vec3 angularVelocity;   // 스핀 (각속도)
+    vec3 angularVelocity;
     float radius;
     float mass;
-    
-    // 회전 상태 (렌더링용)
+
+    // 회전 (렌더링용)
     float rotationAngle;
     vec3 rotationAxis;
-    
-    // 스핀 타입
-    SpinType spinType;
-    
+
     // 상태
+    SpinType spinType;
     bool isRolling;
     bool isInGutter;
+    int ballType;           // 0=빨강, 1=파랑, 2=초록
+
+    // 스플라인 관련
     float rollTime;         // 굴린 후 경과 시간
-    float startX;           // 시작 X 위치
-    
-    // 텍스처/색상
-    GLuint textureID;
-    vec3 color;
-    int ballType;   // 공 종류 (0, 1, 2...)
-    
+    float totalTime;        // 전체 예상 시간
+    vec3 splineP0;          // 제어점 0
+    vec3 splineP1;          // 제어점 1
+    vec3 splineP2;          // 제어점 2
+    vec3 splineP3;          // 제어점 3
+    bool useSpline;         // 스플라인 사용 여부
+
     // 생성자
     Ball();
-    
-    // 초기화 (새 프레임 시작)
-    void Reset(float startX);
-    
-    // 물리 업데이트
-    void Update(float dt);
-    
+
+    // 초기화
+    void Reset();
+
     // 공 발사
     void Launch(float power, SpinType spin);
-    
-    // 스핀 효과 적용 (마그누스 효과)
-    void ApplySpinEffect(float dt);
-    
-    // 거터 체크
-    void CheckGutter();
-    
-    // 레인 마찰 적용
+
+    // 업데이트
+    void Update(float dt);
     void ApplyFriction(float dt);
-    
+    void CheckGutter();
+
+    // 스플라인 함수
+    void SetupSpline(float power, SpinType spin);
+    vec3 EvaluateCardinalSpline(float t);
+
     // 렌더링
     void Draw();
-    
-    // 공 종류 변경
+
+    // 공 타입 설정
     void SetBallType(int type);
-    
-    // 정지 여부
+
+    // 시작 위치 설정하며 리셋
+    void Reset(float startX);
+
+    // 정지 여부 확인
     bool IsStopped();
 };
