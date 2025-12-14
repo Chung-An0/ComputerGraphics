@@ -11,7 +11,7 @@ Ball::Ball() {
 }
 
 void Ball::Reset() {
-    position = vec3(0.0f, radius, 1.0f);  // 레인 시작 위치 (z=1.0f, 파울라인 뒤)
+    position = vec3(0.0f, radius, 0.5f);  // 파울라인(z=0) 바로 뒤
     velocity = vec3(0.0f);
     angularVelocity = vec3(0.0f);
     rotationAngle = 0.0f;
@@ -43,8 +43,8 @@ void Ball::Launch(float power, SpinType spin) {
     rollTime = 0.0f;
     isInGutter = false;
 
-    // 기본 전진 속도 (파워에 비례)
-    float baseSpeed = power * 10.0f + 3.0f;
+    // 기본 전진 속도 (파워에 비례) - 속도 증가
+    float baseSpeed = power * 12.0f + 5.0f;
     velocity = vec3(0.0f, 0.0f, -baseSpeed);
 
     // 스플라인 설정 (스핀이 있을 때만)
@@ -130,8 +130,11 @@ void Ball::Update(float dt) {
             useSpline = false;
             position = splineP3;
             position.y = radius;
-            // 핀 방향으로 계속 직진
-            velocity = vec3(0.0f, 0.0f, -3.0f);
+
+            // 현재 속도 유지하면서 직진
+            float currentSpeed = length(velocity);
+            if (currentSpeed < 5.0f) currentSpeed = 5.0f;
+            velocity = vec3(0.0f, 0.0f, -currentSpeed);
         }
         else {
             vec3 newPos = EvaluateCardinalSpline(t);
@@ -216,6 +219,7 @@ void Ball::CheckGutter() {
 
 void Ball::Draw() {
     glDisable(GL_TEXTURE_2D);
+    glDisable(GL_COLOR_MATERIAL);  // Material 설정이 제대로 적용되도록
 
     glPushMatrix();
 
@@ -254,6 +258,8 @@ void Ball::Draw() {
     gluDeleteQuadric(quad);
 
     glPopMatrix();
+
+    glEnable(GL_COLOR_MATERIAL);  // 다른 오브젝트를 위해 다시 활성화
 }
 
 void Ball::SetBallType(int type) {
