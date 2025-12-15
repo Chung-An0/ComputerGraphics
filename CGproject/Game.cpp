@@ -1,10 +1,107 @@
 #include "Game.h"
+#include "Texture.h"
+
+// =============================================================
+// Skybox (Cubemap)
+// =============================================================
+static GLuint gSkyboxTex = 0;
+static bool   gSkyboxEnabled = false;
+
+static void LoadSkybox()
+{
+    vector<string> faces = {
+        "Assets/skybox/right.jpg",
+        "Assets/skybox/left.jpg",
+        "Assets/skybox/top.jpg",
+        "Assets/skybox/bottom.jpg",
+        "Assets/skybox/front.jpg",
+        "Assets/skybox/back.jpg"
+    };
+
+    gSkyboxTex = Texture::LoadCubemap(faces);
+    gSkyboxEnabled = (gSkyboxTex != 0);
+}
+
+static void DrawSkybox()
+{
+    if (!gSkyboxEnabled) return;
+
+    // 현재 상태 저장
+    GLboolean lightWas = glIsEnabled(GL_LIGHTING);
+    GLboolean fogWas = glIsEnabled(GL_FOG);
+    GLboolean cullWas = glIsEnabled(GL_CULL_FACE);
+
+    glDepthMask(GL_FALSE);
+    glDisable(GL_LIGHTING);
+    glDisable(GL_FOG);
+    glDisable(GL_CULL_FACE);
+
+    glEnable(GL_TEXTURE_CUBE_MAP);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, gSkyboxTex);
+
+    // 카메라 회전만 적용(이동 제거)
+    GLfloat mv[16];
+    glGetFloatv(GL_MODELVIEW_MATRIX, mv);
+    mv[12] = mv[13] = mv[14] = 0.0f;
+
+    glPushMatrix();
+    glLoadMatrixf(mv);
+
+    float s = 70.0f; // 박스 크기
+
+    glBegin(GL_QUADS);
+    // +X
+    glTexCoord3f(1, -1, -1); glVertex3f(s, -s, -s);
+    glTexCoord3f(1, -1, 1); glVertex3f(s, -s, s);
+    glTexCoord3f(1, 1, 1); glVertex3f(s, s, s);
+    glTexCoord3f(1, 1, -1); glVertex3f(s, s, -s);
+
+    // -X
+    glTexCoord3f(-1, -1, 1); glVertex3f(-s, -s, s);
+    glTexCoord3f(-1, -1, -1); glVertex3f(-s, -s, -s);
+    glTexCoord3f(-1, 1, -1); glVertex3f(-s, s, -s);
+    glTexCoord3f(-1, 1, 1); glVertex3f(-s, s, s);
+
+    // +Y
+    glTexCoord3f(-1, 1, -1); glVertex3f(-s, s, -s);
+    glTexCoord3f(1, 1, -1); glVertex3f(s, s, -s);
+    glTexCoord3f(1, 1, 1); glVertex3f(s, s, s);
+    glTexCoord3f(-1, 1, 1); glVertex3f(-s, s, s);
+
+    // -Y
+    glTexCoord3f(-1, -1, 1); glVertex3f(-s, -s, s);
+    glTexCoord3f(1, -1, 1); glVertex3f(s, -s, s);
+    glTexCoord3f(1, -1, -1); glVertex3f(s, -s, -s);
+    glTexCoord3f(-1, -1, -1); glVertex3f(-s, -s, -s);
+
+    // +Z
+    glTexCoord3f(1, -1, 1); glVertex3f(s, -s, s);
+    glTexCoord3f(-1, -1, 1); glVertex3f(-s, -s, s);
+    glTexCoord3f(-1, 1, 1); glVertex3f(-s, s, s);
+    glTexCoord3f(1, 1, 1); glVertex3f(s, s, s);
+
+    // -Z
+    glTexCoord3f(-1, -1, -1); glVertex3f(-s, -s, -s);
+    glTexCoord3f(1, -1, -1); glVertex3f(s, -s, -s);
+    glTexCoord3f(1, 1, -1); glVertex3f(s, s, -s);
+    glTexCoord3f(-1, 1, -1); glVertex3f(-s, s, -s);
+    glEnd();
+
+    glPopMatrix();
+
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glDisable(GL_TEXTURE_CUBE_MAP);
+
+    // 상태 원복
+    if (cullWas)  glEnable(GL_CULL_FACE);
+    if (fogWas)   glEnable(GL_FOG);
+    if (lightWas) glEnable(GL_LIGHTING);
+
+    glDepthMask(GL_TRUE);
+}
 
 // =============================================================
 // B-lite Picking (Screen -> World)
-// - Projection/View matrices: read from OpenGL
-// - UnProject + Ray-Plane intersection: implemented manually
-//   (so the math is clearly shown in code)
 // =============================================================
 
 struct _Vec4d { double x, y, z, w; };
@@ -20,7 +117,6 @@ static _Vec4d _MulMat4Vec4(const double m[16], const _Vec4d& v) {
 }
 
 static bool _InvertMat4(const double m[16], double invOut[16]) {
-    // 4x4 inverse (standard explicit form, OpenGL column-major)
     double inv[16];
 
     inv[0] = m[5] * m[10] * m[15] -
@@ -148,12 +244,10 @@ static bool _UnProjectManual(
     const double model[16], const double proj[16], const int viewport[4],
     double& outX, double& outY, double& outZ
 ) {
-    // Screen -> NDC
     double x = (winX - viewport[0]) / (double)viewport[2] * 2.0 - 1.0;
     double y = (winY - viewport[1]) / (double)viewport[3] * 2.0 - 1.0;
     double z = winZ * 2.0 - 1.0;
 
-    // PM = P * MV
     double pm[16];
     for (int c = 0; c < 4; c++) {
         for (int r = 0; r < 4; r++) {
@@ -187,7 +281,6 @@ static bool _PickLanePoint(
     int viewport[4];
     double proj[16], model[16];
 
-    // Build the same matrices as Render() (but keep GL state intact)
     glGetIntegerv(GL_VIEWPORT, viewport);
 
     glMatrixMode(GL_PROJECTION);
@@ -202,11 +295,9 @@ static bool _PickLanePoint(
     camera.Apply();
     glGetDoublev(GL_MODELVIEW_MATRIX, model);
 
-    // Convert GLUT y(top->down) -> OpenGL window y(bottom->up)
     double winX = (double)mouseX;
     double winY = (double)(viewport[3] - mouseY);
 
-    // Two points along the ray
     double nx, ny, nz;
     double fx, fy, fz;
     bool okN = _UnProjectManual(winX, winY, 0.0, model, proj, viewport, nx, ny, nz);
@@ -219,10 +310,9 @@ static bool _PickLanePoint(
 
     if (!okN || !okF) return false;
 
-    // Ray: O + tD
     double ox = nx, oy = ny, oz = nz;
     double dx = fx - nx, dy = fy - ny, dz = fz - nz;
-    if (fabs(dy) < 1e-9) return false; // parallel
+    if (fabs(dy) < 1e-9) return false;
 
     double t = (yPlane - oy) / dy;
     if (t < 0.0) return false;
@@ -245,11 +335,12 @@ static void _DrawAimGuideLine(float startX, float startZ, SpinType spin) {
     if (spin == SpinType::RIGHT_HOOK) sign = -1.0f;
     float pathAmp = sign * amp;
 
-    // Make the line clearly visible (no lighting). Restore states afterwards
     GLboolean lightWas = glIsEnabled(GL_LIGHTING);
     GLboolean texWas = glIsEnabled(GL_TEXTURE_2D);
+
     if (lightWas) glDisable(GL_LIGHTING);
-    if (texWas) glDisable(GL_TEXTURE_2D);
+    if (texWas)   glDisable(GL_TEXTURE_2D);
+
     glLineWidth(2.5f);
     glEnable(GL_LINE_STIPPLE);
     glLineStipple(1, 0x00FF);
@@ -261,6 +352,7 @@ static void _DrawAimGuideLine(float startX, float startZ, SpinType spin) {
     glBegin(GL_LINE_STRIP);
     const int N = 44;
     float y = BALL_RADIUS + 0.004f;
+
     for (int i = 0; i <= N; i++) {
         float t = (float)i / (float)N;
         float x = startX + pathAmp * sinf(PI * t);
@@ -271,10 +363,13 @@ static void _DrawAimGuideLine(float startX, float startZ, SpinType spin) {
 
     glDisable(GL_LINE_STIPPLE);
 
-    if (texWas) glEnable(GL_TEXTURE_2D);
+    if (texWas)   glEnable(GL_TEXTURE_2D);
     if (lightWas) glEnable(GL_LIGHTING);
 }
 
+// =============================================================
+// Game
+// =============================================================
 Game& Game::Instance() {
     static Game instance;
     return instance;
@@ -317,6 +412,9 @@ void Game::Init() {
     glFogi(GL_FOG_MODE, GL_LINEAR);
     glFogf(GL_FOG_START, 10.0f);
     glFogf(GL_FOG_END, 30.0f);
+
+    // ✅ Skybox 로드(Assets/skybox/6장 필요)
+    LoadSkybox();
 }
 
 void Game::Update() {
@@ -347,7 +445,6 @@ void Game::Update() {
         UpdateFrameEnd();
         break;
     case GameState::GAME_OVER:
-        // (이제는 거의 안 머무름) 그래도 혹시 남아있으면 대기
         break;
     }
 
@@ -368,11 +465,13 @@ void Game::Render() {
 
     camera.Apply();
 
+    // ✅ 배경 먼저
+    DrawSkybox();
+
     lane.Draw();
     pins.Draw();
 
-    // ✅ Aim guide line (uses the same spline idea as the hook path)
-    // Only shown before the throw so the player can "engineer" their aim.
+    // 조준/파워 단계에서만 가이드 라인
     if (!ui.menuOpen && (state == GameState::AIMING || state == GameState::CHARGING)) {
         _DrawAimGuideLine(camera.playerX, ball.position.z, ui.selectedSpin);
     }
@@ -490,10 +589,9 @@ void Game::UpdateFrameEnd() {
     if (transitionTimer <= 0) {
         // ✅ 10프레임까지 끝나면 멈추지 말고 즉시 초기화
         if (ui.currentFrame >= 10) {
-            ResetGame();                 // 초기 상태로 복귀
+            ResetGame();
             return;
         }
-
         NextThrow();
     }
 }
@@ -551,8 +649,8 @@ void Game::OnKeyDown(unsigned char key) {
     }
 }
 
-void Game::OnMouse(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+void Game::OnMouse(int button, int st, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && st == GLUT_DOWN) {
         // UI click first
         ui.OnMouseClick(x, y);
 
@@ -566,7 +664,7 @@ void Game::OnMouse(int button, int state, int x, int y) {
             }
         }
 
-        // B-lite picking: click on the lane to set the aim X (same as A/D)
+        // Lane picking: click to set the aim X (same as A/D)
         if (!onSpinUI && this->state == GameState::AIMING && !ui.menuOpen) {
             double hx, hy, hz;
             if (_PickLanePoint(x, y, (double)BALL_RADIUS, camera, hx, hy, hz)) {
@@ -671,8 +769,8 @@ void SpecialCallback(int key, int x, int y) {
     Game::Instance().OnSpecialKey(key);
 }
 
-void MouseCallback(int button, int state, int x, int y) {
-    Game::Instance().OnMouse(button, state, x, y);
+void MouseCallback(int button, int st, int x, int y) {
+    Game::Instance().OnMouse(button, st, x, y);
 }
 
 void MotionCallback(int x, int y) {

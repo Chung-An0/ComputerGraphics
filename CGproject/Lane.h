@@ -7,30 +7,30 @@ public:
     GLuint laneTexture;
     GLuint gutterTexture;
     GLuint foulLineTexture;
-    
+
     // 조명
     vec3 lightPosition;
-    
+
     Lane();
-    
+
     // 초기화
     void Init();
-    
+
     // 렌더링
     void Draw();
-    
+
     // 레인 바닥
     void DrawLaneSurface();
-    
+
     // 거터
     void DrawGutters();
-    
+
     // 파울라인
     void DrawFoulLine();
-    
+
     // 주변 환경 (벽, 천장 등)
     void DrawEnvironment();
-    
+
     // 핀 영역 배경
     void DrawPinArea();
 };

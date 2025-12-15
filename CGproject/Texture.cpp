@@ -39,7 +39,7 @@ GLuint Texture::Load(const char* filepath) {
 
     stbi_image_free(data);
     glBindTexture(GL_TEXTURE_2D, 0);
-    
+
     return textureID;
 }
 
@@ -50,15 +50,20 @@ GLuint Texture::LoadCubemap(vector<string> faces) {
 
     int width, height, channels;
     stbi_set_flip_vertically_on_load(false);
-    
+
     for (unsigned int i = 0; i < faces.size(); i++) {
         unsigned char* data = stbi_load(faces[i].c_str(), &width, &height, &channels, 0);
         if (data) {
+            GLenum format = (channels == 4) ? GL_RGBA : GL_RGB;
+
             glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-                0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+                0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         }
         else {
             cout << "Cubemap failed to load: " << faces[i] << endl;
+            stbi_image_free(data);
+            glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+            return 0;
         }
         stbi_image_free(data);
     }
@@ -69,14 +74,25 @@ GLuint Texture::LoadCubemap(vector<string> faces) {
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
     return textureID;
 }
+
 
 void Texture::Bind(GLuint textureID, int unit) {
     glActiveTexture(GL_TEXTURE0 + unit);
     glBindTexture(GL_TEXTURE_2D, textureID);
 }
 
+void Texture::BindCubemap(GLuint cubemapID, int unit) {
+    glActiveTexture(GL_TEXTURE0 + unit);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapID);
+}
+
 void Texture::Unbind() {
     glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void Texture::UnbindCubemap() {
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 }
