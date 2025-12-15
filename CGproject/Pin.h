@@ -19,6 +19,18 @@ public:
     bool isFalling;     // 쓰러지는 중인지
     int pinNumber;      // 핀 번호 (1-10)
 
+    // ----- 추가: 충돌 이펙트 및 사운드 -----
+    // 핀과 공이 충돌했을 때 잠시 동안 시각적 이펙트를 표시한다.
+    // effectActive가 true이면 Draw()에서 추가 이펙트(작은 불꽃 구체)를 렌더링한다.
+    bool effectActive;
+    // 남은 이펙트 시간(초). Update()에서 감소시키며 0이 되면 effectActive를 false로 만든다.
+    float effectTimer;
+    // 이펙트의 총 지속 시간(초). 충돌 발생 시 effectTimer를 이 값으로 초기화한다.
+    static constexpr float EFFECT_DURATION = 0.3f;
+
+    // 핀이 현재 레인에서 활동 중인지 여부. true이면 게임에 남아 있고 false이면 제거된 상태다.
+    bool inPlay;
+
     // 생성자
     Pin();
     Pin(int number, vec3 pos);

@@ -3,6 +3,13 @@
 #include <ctime>
 #include <cmath>
 
+// Windows 헤더와 사운드 재생을 위한 mmsystem을 포함한다.
+#ifdef _WIN32
+#include <windows.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
 // 핀 배치 위치 (삼각형)
 //        7  8  9  10
 //          4  5  6
@@ -27,6 +34,13 @@ Pin::Pin() {
     mass = 1.5f;
     pinNumber = 0;
     Reset();
+
+    // 이펙트 초기 상태
+    effectActive = false;
+    effectTimer = 0.0f;
+
+    // 핀은 처음에 게임에 포함된다
+    inPlay = true;
 }
 
 Pin::Pin(int number, vec3 pos) {
@@ -41,6 +55,13 @@ Pin::Pin(int number, vec3 pos) {
     velocity = vec3(0.0f);
     angularVelocity = vec3(0.0f);
     rotation = vec3(0.0f);
+
+    // 이펙트 초기화
+    effectActive = false;
+    effectTimer = 0.0f;
+
+    // 새 핀은 레인에 존재한다
+    inPlay = true;
 }
 
 void Pin::Reset() {
@@ -50,9 +71,27 @@ void Pin::Reset() {
     angularVelocity = vec3(0.0f);
     rotation = vec3(0.0f);
     position.y = height / 2.0f;
+
+    // 이펙트 중지
+    effectActive = false;
+    effectTimer = 0.0f;
+
+    // 핀을 다시 활성화
+    inPlay = true;
 }
 
 void Pin::Update(float dt) {
+    // 게임에서 제거된 핀은 업데이트하지 않는다
+    if (!inPlay) return;
+
+    // 이펙트 갱신은 사용하지 않음
+
+    // 쓰러진 핀은 바로 레인에서 제거한다
+    if (!isStanding && isFalling) {
+        inPlay = false;
+        return;
+    }
+
     if (isStanding && !isFalling) return;
 
     velocity.y += GRAVITY * dt;
@@ -68,9 +107,27 @@ void Pin::Update(float dt) {
     if (abs(rotation.x) > 45.0f || abs(rotation.z) > 45.0f) {
         isStanding = false;
     }
+
+    // 레인 밖으로 크게 벗어나거나 너무 높이 날아간 핀은 즉시 제거하여 화면에 남지 않도록 한다
+    {
+        // 레인의 중앙에서 측면 벽까지의 거리(여유를 포함)
+        float wallDist = LANE_WIDTH / 2.0f + GUTTER_WIDTH + 0.5f;
+
+        // x 축이 벽을 넘어가거나, z가 레인 범위를 벗어나거나, y가 너무 높으면 제거한다.  
+        // "standing" 여부와 무관하게, 벽에 닿은 핀은 모두 제거하여 벽에 붙어서 남는 현상을 방지한다.
+        if (fabs(position.x) > wallDist + 0.2f || position.z > 4.0f || position.z < -LANE_LENGTH - 1.0f || position.y > 1.0f) {
+            inPlay = false;
+        }
+        // 측면 벽 근처까지 이동한 핀은 즉시 게임에서 제외한다.
+        else if (fabs(position.x) >= (wallDist - radius)) {
+            inPlay = false;
+        }
+    }
 }
 
 bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity) {
+    // 게임에서 제거된 핀은 충돌하지 않는다
+    if (!inPlay) return false;
     if (!isStanding) return false;
 
     vec3 toPin = position - ballPos;
@@ -99,6 +156,11 @@ bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVeloci
         angularVelocity.y = (float)(rand() % 60 - 30) / 10.0f;
         angularVelocity.z = impactDir.x * impactForce * 2.0f - ballAngularVelocity.y * 0.5f;
 
+        // 충돌 시 사운드만 재생 (시각적 이펙트 비활성화)
+#ifdef _WIN32
+        PlaySound(TEXT("sounds\\pin_hit.wav"), NULL, SND_FILENAME | SND_ASYNC);
+#endif
+
         return true;
     }
 
@@ -106,6 +168,8 @@ bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVeloci
 }
 
 bool Pin::CheckCollisionWithPin(Pin& other) {
+    // 게임에서 제거된 핀과는 충돌하지 않는다
+    if (!inPlay || !other.inPlay) return false;
     if (!other.isFalling && !other.isStanding) return false;
     if (this == &other) return false;
 
@@ -114,6 +178,11 @@ bool Pin::CheckCollisionWithPin(Pin& other) {
     float collisionDist = radius * 2.8f;
 
     if (dist < collisionDist && dist > 0.001f) {
+        // 충돌 시 사운드만 재생 (이펙트 비활성화)
+#ifdef _WIN32
+        PlaySound(TEXT("sounds\\pin_hit.wav"), NULL, SND_FILENAME | SND_ASYNC);
+#endif
+
         vec3 normal = normalize(diff);
 
         float overlap = collisionDist - dist;
@@ -206,6 +275,9 @@ bool Pin::IsDown() {
 }
 
 void Pin::Draw() {
+    // 게임에서 제거된 핀은 그리지 않는다
+    if (!inPlay) return;
+
     glPushMatrix();
 
     glTranslatef(position.x, position.y, position.z);
@@ -252,6 +324,8 @@ void Pin::Draw() {
     gluSphere(quad, radius * 0.7f, 16, 16);
     glPopMatrix();
 
+    // 시각적 충돌 이펙트는 표시하지 않음
+
     gluDeleteQuadric(quad);
 
     glPopMatrix();
@@ -274,7 +348,12 @@ void PinManager::ResetAll() {
 
 void PinManager::RemoveFallenPins() {
     for (int i = 0; i < 10; i++) {
-        if (pins[i].isStanding && !pins[i].IsDown()) {
+        // 쓰러진 핀은 레인에서 제거한다
+        if (!pins[i].isStanding || pins[i].IsDown()) {
+            pins[i].inPlay = false;
+        }
+        else {
+            // 아직 서있는 핀은 속도를 0으로 고정하여 흔들리지 않게 한다
             pins[i].velocity = vec3(0.0f);
             pins[i].angularVelocity = vec3(0.0f);
         }
@@ -357,6 +436,7 @@ void PinManager::CheckBallCollision(vec3 ballPos, float ballRadius, vec3 ballVel
 
     // ====== 일반 충돌 처리 ======
     for (int i = 0; i < 10; i++) {
+        if (!pins[i].inPlay) continue;
         pins[i].CheckCollisionWithBall(ballPos, ballRadius, ballVelocity, ballAngularVelocity);
     }
 }
@@ -380,6 +460,7 @@ void PinManager::Draw() {
 int PinManager::CountStanding() {
     int count = 0;
     for (int i = 0; i < 10; i++) {
+        if (!pins[i].inPlay) continue;
         if (pins[i].isStanding && !pins[i].IsDown()) {
             count++;
         }
@@ -389,6 +470,7 @@ int PinManager::CountStanding() {
 
 bool PinManager::AllSettled() {
     for (int i = 0; i < 10; i++) {
+        if (!pins[i].inPlay) continue;
         if (length(pins[i].velocity) > 0.05f) {
             return false;
         }
