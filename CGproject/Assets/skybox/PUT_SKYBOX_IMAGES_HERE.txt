@@ -1,9 +1,0 @@
-Put 6 skybox images here (same resolution recommended):
-- right.jpg  (+X)
-- left.jpg   (-X)
-- top.jpg    (+Y)
-- bottom.jpg (-Y)
-- front.jpg  (+Z)
-- back.jpg   (-Z)
-
-You can also use PNG; if so, rename paths in Game::LoadSkybox().

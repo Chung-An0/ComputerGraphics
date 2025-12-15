@@ -2,16 +2,16 @@
 
 Camera::Camera() {
     mode = CameraMode::FIRST_PERSON;
-    
+
     // 1인칭 초기 위치 (파울라인 뒤)
     position = vec3(0.0f, 1.6f, 2.0f);  // 사람 눈높이
     pitch = -5.0f;   // 살짝 아래를 봄
     yaw = -90.0f;    // 앞을 봄 (-Z 방향)
-    
+
     // 공 추적 카메라 초기값
     followDistance = 2.5f;
     followHeight = 1.0f;
-    
+
     // 플레이어 좌우 위치 (레인 중앙)
     playerX = 0.0f;
 }
@@ -20,7 +20,7 @@ void Camera::Apply() {
     if (mode == CameraMode::FIRST_PERSON) {
         UpdateFirstPerson();
     }
-    
+
     vec3 target = position + GetForward();
     gluLookAt(
         position.x, position.y, position.z,
@@ -36,18 +36,18 @@ void Camera::UpdateFirstPerson() {
 
 void Camera::UpdateBallFollow(vec3 ballPos, vec3 ballDir) {
     if (mode != CameraMode::BALL_FOLLOW) return;
-    
+
     // 공 뒤쪽 + 위에서 따라감
     vec3 behindOffset = -normalize(ballDir) * followDistance;
     vec3 heightOffset = vec3(0.0f, followHeight, 0.0f);
-    
+
     position = ballPos + behindOffset + heightOffset;
     targetPosition = ballPos;
     targetDirection = ballDir;
-    
+
     // 카메라가 공보다 앞을 봐야 핀이 보임
     vec3 lookTarget = ballPos + normalize(ballDir) * 5.0f;
-    
+
     // pitch와 yaw 계산 (공 앞쪽을 바라보도록)
     vec3 dir = normalize(lookTarget - position);
     pitch = degrees(asin(dir.y));
@@ -80,7 +80,7 @@ void Camera::MoveRight(float amount) {
 
 void Camera::SetMode(CameraMode newMode) {
     mode = newMode;
-    
+
     if (mode == CameraMode::FIRST_PERSON) {
         // 1인칭으로 돌아갈 때 초기화
         position = vec3(playerX, 1.6f, 2.0f);

@@ -2,105 +2,6 @@
 #include "Texture.h"
 
 // =============================================================
-// Skybox (Cubemap)
-// =============================================================
-static GLuint gSkyboxTex = 0;
-static bool   gSkyboxEnabled = false;
-
-static void LoadSkybox()
-{
-    vector<string> faces = {
-        "Assets/skybox/right.jpg",
-        "Assets/skybox/left.jpg",
-        "Assets/skybox/top.jpg",
-        "Assets/skybox/bottom.jpg",
-        "Assets/skybox/front.jpg",
-        "Assets/skybox/back.jpg"
-    };
-
-    gSkyboxTex = Texture::LoadCubemap(faces);
-    gSkyboxEnabled = (gSkyboxTex != 0);
-}
-
-static void DrawSkybox()
-{
-    if (!gSkyboxEnabled) return;
-
-    // 현재 상태 저장
-    GLboolean lightWas = glIsEnabled(GL_LIGHTING);
-    GLboolean fogWas = glIsEnabled(GL_FOG);
-    GLboolean cullWas = glIsEnabled(GL_CULL_FACE);
-
-    glDepthMask(GL_FALSE);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_FOG);
-    glDisable(GL_CULL_FACE);
-
-    glEnable(GL_TEXTURE_CUBE_MAP);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, gSkyboxTex);
-
-    // 카메라 회전만 적용(이동 제거)
-    GLfloat mv[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, mv);
-    mv[12] = mv[13] = mv[14] = 0.0f;
-
-    glPushMatrix();
-    glLoadMatrixf(mv);
-
-    float s = 70.0f; // 박스 크기
-
-    glBegin(GL_QUADS);
-    // +X
-    glTexCoord3f(1, -1, -1); glVertex3f(s, -s, -s);
-    glTexCoord3f(1, -1, 1); glVertex3f(s, -s, s);
-    glTexCoord3f(1, 1, 1); glVertex3f(s, s, s);
-    glTexCoord3f(1, 1, -1); glVertex3f(s, s, -s);
-
-    // -X
-    glTexCoord3f(-1, -1, 1); glVertex3f(-s, -s, s);
-    glTexCoord3f(-1, -1, -1); glVertex3f(-s, -s, -s);
-    glTexCoord3f(-1, 1, -1); glVertex3f(-s, s, -s);
-    glTexCoord3f(-1, 1, 1); glVertex3f(-s, s, s);
-
-    // +Y
-    glTexCoord3f(-1, 1, -1); glVertex3f(-s, s, -s);
-    glTexCoord3f(1, 1, -1); glVertex3f(s, s, -s);
-    glTexCoord3f(1, 1, 1); glVertex3f(s, s, s);
-    glTexCoord3f(-1, 1, 1); glVertex3f(-s, s, s);
-
-    // -Y
-    glTexCoord3f(-1, -1, 1); glVertex3f(-s, -s, s);
-    glTexCoord3f(1, -1, 1); glVertex3f(s, -s, s);
-    glTexCoord3f(1, -1, -1); glVertex3f(s, -s, -s);
-    glTexCoord3f(-1, -1, -1); glVertex3f(-s, -s, -s);
-
-    // +Z
-    glTexCoord3f(1, -1, 1); glVertex3f(s, -s, s);
-    glTexCoord3f(-1, -1, 1); glVertex3f(-s, -s, s);
-    glTexCoord3f(-1, 1, 1); glVertex3f(-s, s, s);
-    glTexCoord3f(1, 1, 1); glVertex3f(s, s, s);
-
-    // -Z
-    glTexCoord3f(-1, -1, -1); glVertex3f(-s, -s, -s);
-    glTexCoord3f(1, -1, -1); glVertex3f(s, -s, -s);
-    glTexCoord3f(1, 1, -1); glVertex3f(s, s, -s);
-    glTexCoord3f(-1, 1, -1); glVertex3f(-s, s, -s);
-    glEnd();
-
-    glPopMatrix();
-
-    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-    glDisable(GL_TEXTURE_CUBE_MAP);
-
-    // 상태 원복
-    if (cullWas)  glEnable(GL_CULL_FACE);
-    if (fogWas)   glEnable(GL_FOG);
-    if (lightWas) glEnable(GL_LIGHTING);
-
-    glDepthMask(GL_TRUE);
-}
-
-// =============================================================
 // B-lite Picking (Screen -> World)
 // =============================================================
 
@@ -413,8 +314,6 @@ void Game::Init() {
     glFogf(GL_FOG_START, 10.0f);
     glFogf(GL_FOG_END, 30.0f);
 
-    // ✅ Skybox 로드(Assets/skybox/6장 필요)
-    LoadSkybox();
 }
 
 void Game::Update() {
@@ -464,9 +363,6 @@ void Game::Render() {
     glLoadIdentity();
 
     camera.Apply();
-
-    // ✅ 배경 먼저
-    DrawSkybox();
 
     lane.Draw();
     pins.Draw();
