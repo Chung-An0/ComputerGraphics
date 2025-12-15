@@ -1,5 +1,280 @@
 #include "Game.h"
 
+// =============================================================
+// B-lite Picking (Screen -> World)
+// - Projection/View matrices: read from OpenGL
+// - UnProject + Ray-Plane intersection: implemented manually
+//   (so the math is clearly shown in code)
+// =============================================================
+
+struct _Vec4d { double x, y, z, w; };
+
+static _Vec4d _MulMat4Vec4(const double m[16], const _Vec4d& v) {
+    // OpenGL column-major
+    _Vec4d r;
+    r.x = m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w;
+    r.y = m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w;
+    r.z = m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w;
+    r.w = m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w;
+    return r;
+}
+
+static bool _InvertMat4(const double m[16], double invOut[16]) {
+    // 4x4 inverse (standard explicit form, OpenGL column-major)
+    double inv[16];
+
+    inv[0] = m[5] * m[10] * m[15] -
+        m[5] * m[11] * m[14] -
+        m[9] * m[6] * m[15] +
+        m[9] * m[7] * m[14] +
+        m[13] * m[6] * m[11] -
+        m[13] * m[7] * m[10];
+
+    inv[4] = -m[4] * m[10] * m[15] +
+        m[4] * m[11] * m[14] +
+        m[8] * m[6] * m[15] -
+        m[8] * m[7] * m[14] -
+        m[12] * m[6] * m[11] +
+        m[12] * m[7] * m[10];
+
+    inv[8] = m[4] * m[9] * m[15] -
+        m[4] * m[11] * m[13] -
+        m[8] * m[5] * m[15] +
+        m[8] * m[7] * m[13] +
+        m[12] * m[5] * m[11] -
+        m[12] * m[7] * m[9];
+
+    inv[12] = -m[4] * m[9] * m[14] +
+        m[4] * m[10] * m[13] +
+        m[8] * m[5] * m[14] -
+        m[8] * m[6] * m[13] -
+        m[12] * m[5] * m[10] +
+        m[12] * m[6] * m[9];
+
+    inv[1] = -m[1] * m[10] * m[15] +
+        m[1] * m[11] * m[14] +
+        m[9] * m[2] * m[15] -
+        m[9] * m[3] * m[14] -
+        m[13] * m[2] * m[11] +
+        m[13] * m[3] * m[10];
+
+    inv[5] = m[0] * m[10] * m[15] -
+        m[0] * m[11] * m[14] -
+        m[8] * m[2] * m[15] +
+        m[8] * m[3] * m[14] +
+        m[12] * m[2] * m[11] -
+        m[12] * m[3] * m[10];
+
+    inv[9] = -m[0] * m[9] * m[15] +
+        m[0] * m[11] * m[13] +
+        m[8] * m[1] * m[15] -
+        m[8] * m[3] * m[13] -
+        m[12] * m[1] * m[11] +
+        m[12] * m[3] * m[9];
+
+    inv[13] = m[0] * m[9] * m[14] -
+        m[0] * m[10] * m[13] -
+        m[8] * m[1] * m[14] +
+        m[8] * m[2] * m[13] +
+        m[12] * m[1] * m[10] -
+        m[12] * m[2] * m[9];
+
+    inv[2] = m[1] * m[6] * m[15] -
+        m[1] * m[7] * m[14] -
+        m[5] * m[2] * m[15] +
+        m[5] * m[3] * m[14] +
+        m[13] * m[2] * m[7] -
+        m[13] * m[3] * m[6];
+
+    inv[6] = -m[0] * m[6] * m[15] +
+        m[0] * m[7] * m[14] +
+        m[4] * m[2] * m[15] -
+        m[4] * m[3] * m[14] -
+        m[12] * m[2] * m[7] +
+        m[12] * m[3] * m[6];
+
+    inv[10] = m[0] * m[5] * m[15] -
+        m[0] * m[7] * m[13] -
+        m[4] * m[1] * m[15] +
+        m[4] * m[3] * m[13] +
+        m[12] * m[1] * m[7] -
+        m[12] * m[3] * m[5];
+
+    inv[14] = -m[0] * m[5] * m[14] +
+        m[0] * m[6] * m[13] +
+        m[4] * m[1] * m[14] -
+        m[4] * m[2] * m[13] -
+        m[12] * m[1] * m[6] +
+        m[12] * m[2] * m[5];
+
+    inv[3] = -m[1] * m[6] * m[11] +
+        m[1] * m[7] * m[10] +
+        m[5] * m[2] * m[11] -
+        m[5] * m[3] * m[10] -
+        m[9] * m[2] * m[7] +
+        m[9] * m[3] * m[6];
+
+    inv[7] = m[0] * m[6] * m[11] -
+        m[0] * m[7] * m[10] -
+        m[4] * m[2] * m[11] +
+        m[4] * m[3] * m[10] +
+        m[8] * m[2] * m[7] -
+        m[8] * m[3] * m[6];
+
+    inv[11] = -m[0] * m[5] * m[11] +
+        m[0] * m[7] * m[9] +
+        m[4] * m[1] * m[11] -
+        m[4] * m[3] * m[9] -
+        m[8] * m[1] * m[7] +
+        m[8] * m[3] * m[5];
+
+    inv[15] = m[0] * m[5] * m[10] -
+        m[0] * m[6] * m[9] -
+        m[4] * m[1] * m[10] +
+        m[4] * m[2] * m[9] +
+        m[8] * m[1] * m[6] -
+        m[8] * m[2] * m[5];
+
+    double det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+    if (fabs(det) < 1e-12) return false;
+
+    det = 1.0 / det;
+    for (int i = 0; i < 16; i++) invOut[i] = inv[i] * det;
+    return true;
+}
+
+static bool _UnProjectManual(
+    double winX, double winY, double winZ,
+    const double model[16], const double proj[16], const int viewport[4],
+    double& outX, double& outY, double& outZ
+) {
+    // Screen -> NDC
+    double x = (winX - viewport[0]) / (double)viewport[2] * 2.0 - 1.0;
+    double y = (winY - viewport[1]) / (double)viewport[3] * 2.0 - 1.0;
+    double z = winZ * 2.0 - 1.0;
+
+    // PM = P * MV
+    double pm[16];
+    for (int c = 0; c < 4; c++) {
+        for (int r = 0; r < 4; r++) {
+            pm[c * 4 + r] =
+                proj[0 * 4 + r] * model[c * 4 + 0] +
+                proj[1 * 4 + r] * model[c * 4 + 1] +
+                proj[2 * 4 + r] * model[c * 4 + 2] +
+                proj[3 * 4 + r] * model[c * 4 + 3];
+        }
+    }
+
+    double invPM[16];
+    if (!_InvertMat4(pm, invPM)) return false;
+
+    _Vec4d in{ x, y, z, 1.0 };
+    _Vec4d out = _MulMat4Vec4(invPM, in);
+    if (fabs(out.w) < 1e-12) return false;
+
+    outX = out.x / out.w;
+    outY = out.y / out.w;
+    outZ = out.z / out.w;
+    return true;
+}
+
+static bool _PickLanePoint(
+    int mouseX, int mouseY,
+    double yPlane,
+    Camera& camera,
+    double& hitX, double& hitY, double& hitZ
+) {
+    int viewport[4];
+    double proj[16], model[16];
+
+    // Build the same matrices as Render() (but keep GL state intact)
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluPerspective(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f);
+    glGetDoublev(GL_PROJECTION_MATRIX, proj);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    camera.Apply();
+    glGetDoublev(GL_MODELVIEW_MATRIX, model);
+
+    // Convert GLUT y(top->down) -> OpenGL window y(bottom->up)
+    double winX = (double)mouseX;
+    double winY = (double)(viewport[3] - mouseY);
+
+    // Two points along the ray
+    double nx, ny, nz;
+    double fx, fy, fz;
+    bool okN = _UnProjectManual(winX, winY, 0.0, model, proj, viewport, nx, ny, nz);
+    bool okF = _UnProjectManual(winX, winY, 1.0, model, proj, viewport, fx, fy, fz);
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+
+    if (!okN || !okF) return false;
+
+    // Ray: O + tD
+    double ox = nx, oy = ny, oz = nz;
+    double dx = fx - nx, dy = fy - ny, dz = fz - nz;
+    if (fabs(dy) < 1e-9) return false; // parallel
+
+    double t = (yPlane - oy) / dy;
+    if (t < 0.0) return false;
+
+    hitX = ox + t * dx;
+    hitY = oy + t * dy;
+    hitZ = oz + t * dz;
+    return true;
+}
+
+static void _DrawAimGuideLine(float startX, float startZ, SpinType spin) {
+    const float PI = 3.14159265f;
+
+    float safeHalf = (LANE_WIDTH * 0.5f) - BALL_RADIUS - 0.02f;
+    if (safeHalf < 0.05f) safeHalf = 0.05f;
+
+    float amp = safeHalf * 0.85f;
+    float sign = 0.0f;
+    if (spin == SpinType::LEFT_HOOK) sign = +1.0f;
+    if (spin == SpinType::RIGHT_HOOK) sign = -1.0f;
+    float pathAmp = sign * amp;
+
+    // Make the line clearly visible (no lighting). Restore states afterwards
+    GLboolean lightWas = glIsEnabled(GL_LIGHTING);
+    GLboolean texWas = glIsEnabled(GL_TEXTURE_2D);
+    if (lightWas) glDisable(GL_LIGHTING);
+    if (texWas) glDisable(GL_TEXTURE_2D);
+    glLineWidth(2.5f);
+    glEnable(GL_LINE_STIPPLE);
+    glLineStipple(1, 0x00FF);
+
+    if (spin == SpinType::STRAIGHT) glColor3f(0.9f, 0.9f, 0.9f);
+    else if (spin == SpinType::LEFT_HOOK) glColor3f(0.2f, 0.9f, 1.0f);
+    else glColor3f(1.0f, 0.4f, 0.9f);
+
+    glBegin(GL_LINE_STRIP);
+    const int N = 44;
+    float y = BALL_RADIUS + 0.004f;
+    for (int i = 0; i <= N; i++) {
+        float t = (float)i / (float)N;
+        float x = startX + pathAmp * sinf(PI * t);
+        float z = (1.0f - t) * startZ + t * PIN_START_Z;
+        glVertex3f(x, y, z);
+    }
+    glEnd();
+
+    glDisable(GL_LINE_STIPPLE);
+
+    if (texWas) glEnable(GL_TEXTURE_2D);
+    if (lightWas) glEnable(GL_LIGHTING);
+}
+
 Game& Game::Instance() {
     static Game instance;
     return instance;
@@ -95,6 +370,12 @@ void Game::Render() {
 
     lane.Draw();
     pins.Draw();
+
+    // ✅ Aim guide line (uses the same spline idea as the hook path)
+    // Only shown before the throw so the player can "engineer" their aim.
+    if (!ui.menuOpen && (state == GameState::AIMING || state == GameState::CHARGING)) {
+        _DrawAimGuideLine(camera.playerX, ball.position.z, ui.selectedSpin);
+    }
 
     ui.DrawScoreboard3D();
 
@@ -272,7 +553,32 @@ void Game::OnKeyDown(unsigned char key) {
 
 void Game::OnMouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // UI click first
         ui.OnMouseClick(x, y);
+
+        // If the click was on the UI spin buttons, don't treat it as lane picking
+        int yFlip = WINDOW_HEIGHT - y;
+        bool onSpinUI = false;
+        for (int i = 0; i < 3; i++) {
+            if (ui.IsPointInButton(x, yFlip, ui.spinButtons[i])) {
+                onSpinUI = true;
+                break;
+            }
+        }
+
+        // B-lite picking: click on the lane to set the aim X (same as A/D)
+        if (!onSpinUI && this->state == GameState::AIMING && !ui.menuOpen) {
+            double hx, hy, hz;
+            if (_PickLanePoint(x, y, (double)BALL_RADIUS, camera, hx, hy, hz)) {
+                float limit = LANE_WIDTH / 2.0f - BALL_RADIUS;
+                float nx = (float)hx;
+                if (nx < -limit) nx = -limit;
+                if (nx > limit) nx = limit;
+
+                camera.playerX = nx;
+                ball.position.x = nx;
+            }
+        }
     }
 }
 
