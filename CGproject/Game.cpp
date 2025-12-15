@@ -103,17 +103,28 @@ void Game::Render() {
     camera.Apply();
 
     // 3D 오브젝트 렌더링
+    // 1. 레인(바닥)을 가장 먼저 그립니다.
     lane.Draw();
     pins.Draw();
 
     // 천장 점수판 (3D)
     ui.DrawScoreboard3D();
 
-    // 공은 굴러가는 중이거나 조준 중일 때만 표시
+    // 공 표시 여부 확인
+    bool showBall = false;
     if (state != GameState::PIN_ACTION && state != GameState::FRAME_END) {
-        ball.Draw();
+        showBall = true;
     }
     else if (ball.isRolling) {
+        showBall = true;
+    }
+
+    if (showBall) {
+        // [추가] 2. 그림자를 먼저 그립니다. (바닥 위에 덮어씌움)
+        // Lane 객체가 가진 조명 위치를 가져와서 전달합니다.
+        ball.DrawShadow(lane.lightPosition);
+
+        // [기존] 3. 진짜 공을 그립니다. (그림자 위에 덮어씌움)
         ball.Draw();
     }
 
