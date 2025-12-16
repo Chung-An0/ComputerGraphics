@@ -32,6 +32,10 @@ public:
     // 공 추적 모드 업데이트
     void UpdateBallFollow(vec3 ballPos, vec3 ballDir);
 
+    // 탑뷰 및 사이드뷰 업데이트: 공 위치를 기반으로 카메라를 배치한다.
+    void UpdateTopView(vec3 ballPos);
+    void UpdateSideView(vec3 ballPos);
+
     // 입력 처리
     void LookUp(float amount);      // W: 고개 들기
     void LookDown(float amount);    // S: 고개 숙이기

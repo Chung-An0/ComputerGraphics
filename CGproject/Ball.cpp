@@ -1,11 +1,28 @@
 #include "Ball.h"
 #include <cmath>
 #include <algorithm>
+#include "Texture.h"
 
 static float Clamp01(float v) {
     if (v < 0.0f) return 0.0f;
     if (v > 1.0f) return 1.0f;
     return v;
+}
+
+// 정적 멤버 초기화
+// 3개 공 텍스처와 현재 선택된 텍스처 ID를 초기화한다.
+GLuint Ball::textures[3] = { 0, 0, 0 };
+GLuint Ball::currentTexture = 0;
+
+// 텍스처 로딩: 세 가지 공 텍스처를 로드한다. 파일이 없으면 0이 유지된다.
+void Ball::LoadTextures() {
+    // 기본 공 텍스처: ball.jpg
+    textures[0] = Texture::Load("textures/ball.jpg");
+    // 추가 공 텍스처: ball1.jpg, ball2.jpg. 존재하지 않을 경우 메시지만 출력하고 0을 유지한다.
+    textures[1] = Texture::Load("textures/ball1.jpg");
+    textures[2] = Texture::Load("textures/ball2.jpg");
+    // 초기값: 첫 번째 텍스처 사용
+    currentTexture = textures[0];
 }
 
 Ball::Ball() {
@@ -270,23 +287,44 @@ void Ball::CheckGutter() {
 }
 
 void Ball::Draw() {
-    glDisable(GL_TEXTURE_2D);
+    // 텍스처를 사용하여 공을 렌더링한다. 공의 색상은 텍스처와 곱(modulate)되어 표현된다.
     glDisable(GL_COLOR_MATERIAL);
 
     glPushMatrix();
-
     glTranslatef(position.x, position.y, position.z);
     glRotatef(rotationAngle, rotationAxis.x, rotationAxis.y, rotationAxis.z);
 
+    // 공 색상은 타입에 따라 조금씩 다른 색을 적용하지만, 텍스처가 존재하는 경우에는 색상을 흰색으로 설정하여 텍스처가 그대로 보이도록 한다.
     GLfloat matColor[4];
-    switch (ballType) {
-    case 0: matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f; break;
-    case 1: matColor[0] = 0.1f; matColor[1] = 0.3f; matColor[2] = 0.9f; matColor[3] = 1.0f; break;
-    case 2: matColor[0] = 0.1f; matColor[1] = 0.8f; matColor[2] = 0.2f; matColor[3] = 1.0f; break;
-    default:matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f; break;
+    GLfloat matAmbient[4];
+    if (currentTexture != 0) {
+        // 텍스처가 있으면 기본 색을 흰색으로, 환경광은 중간 밝기로 한다
+        matColor[0] = matColor[1] = matColor[2] = 1.0f;
+        matColor[3] = 1.0f;
+        matAmbient[0] = matAmbient[1] = matAmbient[2] = 0.5f;
+        matAmbient[3] = 1.0f;
     }
-
-    GLfloat matAmbient[] = { matColor[0] * 0.3f, matColor[1] * 0.3f, matColor[2] * 0.3f, 1.0f };
+    else {
+        // 텍스처가 없으면 타입별 색상 사용
+        switch (ballType) {
+        case 0:
+            matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
+            break;
+        case 1:
+            matColor[0] = 0.1f; matColor[1] = 0.3f; matColor[2] = 0.9f; matColor[3] = 1.0f;
+            break;
+        case 2:
+            matColor[0] = 0.1f; matColor[1] = 0.8f; matColor[2] = 0.2f; matColor[3] = 1.0f;
+            break;
+        default:
+            matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
+            break;
+        }
+        matAmbient[0] = matColor[0] * 0.3f;
+        matAmbient[1] = matColor[1] * 0.3f;
+        matAmbient[2] = matColor[2] * 0.3f;
+        matAmbient[3] = 1.0f;
+    }
     GLfloat matSpecular[] = { 0.7f, 0.7f, 0.7f, 1.0f };
     GLfloat matShininess[] = { 100.0f };
 
@@ -295,9 +333,24 @@ void Ball::Draw() {
     glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
+    // 텍스처 활성화 및 바인딩
+    glEnable(GL_TEXTURE_2D);
+    if (currentTexture != 0) {
+        Texture::Bind(currentTexture, 0);
+    }
+    // 텍스처가 재질 색상과 곱해지도록 설정
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
     GLUquadric* quad = gluNewQuadric();
+    gluQuadricTexture(quad, GL_TRUE);
+
     gluSphere(quad, radius, 32, 32);
+
     gluDeleteQuadric(quad);
+    if (currentTexture != 0) {
+        Texture::Unbind();
+    }
+    glDisable(GL_TEXTURE_2D);
 
     glPopMatrix();
     glEnable(GL_COLOR_MATERIAL);
@@ -307,4 +360,6 @@ void Ball::SetBallType(int type) {
     if (type < 0) type = 0;
     if (type > 2) type = 2;
     ballType = type;
+    // 선택된 타입에 따라 현재 텍스처를 업데이트한다. 만약 해당 텍스처가 로드되지 않았다면 0으로 유지된다.
+    currentTexture = textures[type];
 }

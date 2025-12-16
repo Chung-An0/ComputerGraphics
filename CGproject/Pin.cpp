@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
+#include "Texture.h"
 
 // Windows 헤더와 사운드 재생을 위한 mmsystem을 포함한다.
 #ifdef _WIN32
@@ -27,6 +28,15 @@ static vec3 PIN_POSITIONS[10] = {
     vec3(PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING * 3),  // 9번
     vec3(PIN_SPACING * 1.5f, 0.0f, -PIN_SPACING * 3)   // 10번
 };
+
+// 정적 멤버 초기화
+GLuint Pin::texture = 0;
+
+// 텍스처 로딩
+void Pin::LoadTexture() {
+    // textures 폴더에 pin.jpg 파일이 있어야 합니다.
+    texture = Texture::Load("textures/pin.jpg");
+}
 
 Pin::Pin() {
     radius = PIN_RADIUS;
@@ -279,24 +289,31 @@ void Pin::Draw() {
     if (!inPlay) return;
 
     glPushMatrix();
-
     glTranslatef(position.x, position.y, position.z);
     glRotatef(rotation.x, 1.0f, 0.0f, 0.0f);
     glRotatef(rotation.y, 0.0f, 1.0f, 0.0f);
     glRotatef(rotation.z, 0.0f, 0.0f, 1.0f);
 
-    GLfloat matWhite[] = { 0.95f, 0.95f, 0.95f, 1.0f };
-    GLfloat matRed[] = { 0.8f,  0.1f,  0.1f,  1.0f };
+    // 스펙큘러와 광택 설정: 텍스처와 함께 적용
     GLfloat matSpecular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
     GLfloat matShininess[] = { 50.0f };
-
+    // 확산색을 흰색으로 지정하여 텍스처가 본래 색상대로 표현되도록 한다
+    GLfloat matDiffuse[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
     glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
+    // 텍스처 활성화 및 바인딩
+    glEnable(GL_TEXTURE_2D);
+    if (texture != 0) {
+        Texture::Bind(texture, 0);
+    }
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
     GLUquadric* quad = gluNewQuadric();
+    gluQuadricTexture(quad, GL_TRUE);
 
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matWhite);
-
+    // 핀 몸통 (아래 굵은 부분 -> 중간 -> 좁아지는 부분)
     glPushMatrix();
     glTranslatef(0.0f, -height / 2.0f + 0.02f, 0.0f);
     glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
@@ -309,24 +326,23 @@ void Pin::Draw() {
     gluCylinder(quad, radius, radius * 0.6f, height * 0.4f, 16, 4);
     glPopMatrix();
 
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matRed);
-
     glPushMatrix();
     glTranslatef(0.0f, -height / 2.0f + height * 0.65f, 0.0f);
     glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
     gluCylinder(quad, radius * 0.6f, radius * 0.5f, height * 0.1f, 16, 2);
     glPopMatrix();
 
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matWhite);
-
+    // 핀 상단 구체
     glPushMatrix();
     glTranslatef(0.0f, height / 2.0f - radius * 0.8f, 0.0f);
     gluSphere(quad, radius * 0.7f, 16, 16);
     glPopMatrix();
 
-    // 시각적 충돌 이펙트는 표시하지 않음
-
     gluDeleteQuadric(quad);
+    if (texture != 0) {
+        Texture::Unbind();
+    }
+    glDisable(GL_TEXTURE_2D);
 
     glPopMatrix();
 }

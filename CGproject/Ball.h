@@ -50,4 +50,13 @@ public:
     void SetBallType(int type);
 
     bool IsStopped();
+
+    // --- 텍스처 관련 ---
+    // 여러 색상의 공을 위해 3개의 텍스처를 로드한다. 메뉴에서 선택된 타입에 따라 다른 텍스처를 사용한다.
+    // textures[0] → ball.jpg, textures[1] → ball1.jpg, textures[2] → ball2.jpg
+    static GLuint textures[3];
+    // 현재 렌더링에 사용할 텍스처 ID. SetBallType()에서 업데이트된다.
+    static GLuint currentTexture;
+    // 텍스처 로딩 함수: Game::Init()에서 호출하여 textures/ball.jpg, ball1.jpg, ball2.jpg를 읽는다.
+    static void LoadTextures();
 };

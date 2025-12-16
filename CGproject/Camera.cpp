@@ -54,6 +54,38 @@ void Camera::UpdateBallFollow(vec3 ballPos, vec3 ballDir) {
     yaw = degrees(atan2(dir.x, -dir.z)) - 90.0f;
 }
 
+// 공 위치를 기준으로 위에서 내려다보는 뷰를 갱신한다.
+// 위쪽 높이와 뒤쪽 거리 값을 조정하여 원하는 프레이밍을 얻을 수 있다.
+void Camera::UpdateTopView(vec3 ballPos) {
+    // 일정한 높이에서 공을 따라가며 위에서 내려다본다.
+    // 카메라 위치는 공보다 일정 z 오프셋과 y 높이를 유지한다.
+    float topHeight = 4.0f;
+    float topOffsetZ = 1.0f;
+    position = vec3(ballPos.x, topHeight, ballPos.z + topOffsetZ);
+
+    // 공을 바라보는 방향 계산
+    vec3 lookTarget = ballPos;
+    vec3 dir = normalize(lookTarget - position);
+    // pitch와 yaw 갱신: dir의 각도를 변환
+    pitch = degrees(asin(dir.y));
+    yaw = degrees(atan2(dir.x, -dir.z)) - 90.0f;
+}
+
+// 공 위치를 기준으로 레인 측면에서 바라보는 뷰를 갱신한다.
+void Camera::UpdateSideView(vec3 ballPos) {
+    // 레인 폭 기준으로 측면 x 위치 결정
+    float sideOffsetX = (LANE_WIDTH / 2.0f) + GUTTER_WIDTH + 0.3f;
+    // 약간 위에서 공과 함께 이동
+    float sideHeight = 1.5f;
+    position = vec3(sideOffsetX, sideHeight, ballPos.z);
+
+    // 공을 바라보는 방향 계산
+    vec3 lookTarget = ballPos;
+    vec3 dir = normalize(lookTarget - position);
+    pitch = degrees(asin(dir.y));
+    yaw = degrees(atan2(dir.x, -dir.z)) - 90.0f;
+}
+
 void Camera::LookUp(float amount) {
     pitch += amount;
     // 제한: 너무 위나 아래로 안 보게
@@ -86,6 +118,17 @@ void Camera::SetMode(CameraMode newMode) {
         position = vec3(playerX, 1.6f, 2.0f);
         pitch = -5.0f;
         yaw = -90.0f;
+    }
+    else if (mode == CameraMode::TOP_VIEW) {
+        // 초기화는 최소한의 값만 설정한다. 실제 위치는 UpdateTopView에서 설정.
+        // pitch/yaw는 위에서 아래로 내려다보도록 기본값을 준다.
+        pitch = -90.0f;
+        yaw = -90.0f;
+    }
+    else if (mode == CameraMode::SIDE_VIEW) {
+        // 측면에서 바라보도록 초기 yaw/pitch 설정 (정면은 -90, 측면은 180)
+        pitch = 0.0f;
+        yaw = 180.0f;
     }
 }
 

@@ -1,5 +1,8 @@
 #include "Game.h"
 #include "Texture.h"
+// 텍스처 로딩을 위해 Ball, Pin 헤더를 포함한다
+#include "Ball.h"
+#include "Pin.h"
 
 // =============================================================
 // B-lite Picking (Screen -> World)
@@ -293,6 +296,9 @@ void Game::Init() {
     }
 
     lane.Init();
+    // 공과 핀에 사용할 텍스처 로딩 (textures/ball.jpg, ball1.jpg, ball2.jpg, textures/pin.jpg)
+    Ball::LoadTextures();
+    Pin::LoadTexture();
     pins.ResetAll();
     ball.Reset(0.0f);
     ui.Reset();
@@ -345,6 +351,19 @@ void Game::Update() {
         break;
     case GameState::GAME_OVER:
         break;
+    }
+
+    // 카메라 모드별 시점 갱신
+    // BALL_FOLLOW는 볼링공이 굴러가지 않을 때에도 추적하게 하여 회색 화면을 방지한다.
+    if (camera.mode == CameraMode::BALL_FOLLOW) {
+        vec3 dir = (length(ball.velocity) > 0.1f) ? normalize(ball.velocity) : vec3(0.0f, 0.0f, -1.0f);
+        camera.UpdateBallFollow(ball.position, dir);
+    }
+    else if (camera.mode == CameraMode::TOP_VIEW) {
+        camera.UpdateTopView(ball.position);
+    }
+    else if (camera.mode == CameraMode::SIDE_VIEW) {
+        camera.UpdateSideView(ball.position);
     }
 
     glutPostRedisplay();
@@ -542,6 +561,23 @@ void Game::OnKeyDown(unsigned char key) {
     case 27:
         exit(0);
         break;
+
+    case 'c':
+    case 'C':
+        // 카메라 시점 순환: FIRST_PERSON → BALL_FOLLOW → TOP_VIEW → SIDE_VIEW → FIRST_PERSON
+        if (camera.mode == CameraMode::FIRST_PERSON) {
+            camera.SetMode(CameraMode::BALL_FOLLOW);
+        }
+        else if (camera.mode == CameraMode::BALL_FOLLOW) {
+            camera.SetMode(CameraMode::TOP_VIEW);
+        }
+        else if (camera.mode == CameraMode::TOP_VIEW) {
+            camera.SetMode(CameraMode::SIDE_VIEW);
+        }
+        else {
+            camera.SetMode(CameraMode::FIRST_PERSON);
+        }
+        break;
     }
 }
 
@@ -620,6 +656,11 @@ void Game::ResetForThrow() {
     ball.Reset(camera.playerX);
     camera.SetMode(CameraMode::FIRST_PERSON);
     camera.pitch = -5.0f;
+}
+
+// NextFrame(): 현재 버전에서는 사용하지 않습니다. 인터페이스 충돌을 피하기 위해 빈 구현을 제공합니다.
+void Game::NextFrame() {
+    // 이 함수는 사용되지 않습니다. 만약 프레임 진입 처리 로직이 필요하다면 여기서 구현하세요.
 }
 
 void Game::ResetGame() {

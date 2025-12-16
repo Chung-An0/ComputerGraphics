@@ -1,14 +1,26 @@
 #include "Lane.h"
+#include "Texture.h"
 
 Lane::Lane() {
     laneTexture = 0;
     gutterTexture = 0;
     foulLineTexture = 0;
     lightPosition = vec3(0.0f, 5.0f, -LANE_LENGTH / 2.0f);
+
+    // 새 텍스처 초기화
+    laneSurfaceTexture = 0;
+    wallTexture = 0;
+    ceilingTexture = 0;
+    floorTexture = 0;
 }
 
 void Lane::Init() {
-    // 텍스처 로딩은 나중에 (없어도 색상으로 표현)
+    // 텍스처 로딩: textures 폴더에 적절한 이미지 파일을 준비해야 합니다.
+    // 예: lane.jpg, wall.jpg, ceiling.jpg, floor.jpg
+    laneSurfaceTexture = Texture::Load("textures/lane.jpg");
+    wallTexture = Texture::Load("textures/wall.jpg");
+    ceilingTexture = Texture::Load("textures/ceiling.jpg");
+    floorTexture = Texture::Load("textures/floor.jpg");
 }
 
 void Lane::Draw() {
@@ -31,39 +43,48 @@ void Lane::Draw() {
 }
 
 void Lane::DrawLaneSurface() {
-    // 레인 바닥 (나무 색상)
-    GLfloat matLane[] = { 0.87f, 0.72f, 0.53f, 1.0f };  // 밝은 나무색
-    GLfloat matSpecular[] = { 0.4f, 0.4f, 0.4f, 1.0f };
-    GLfloat matShininess[] = { 30.0f };
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matLane);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
-
+    // 레인 바닥 텍스처 적용
     float halfWidth = LANE_WIDTH / 2.0f;
+
+    glEnable(GL_TEXTURE_2D);
+    if (laneSurfaceTexture != 0) {
+        Texture::Bind(laneSurfaceTexture, 0);
+    }
+
+    // 스펙큘러 및 광택 설정
+    GLfloat specular[] = { 0.4f, 0.4f, 0.4f, 1.0f };
+    GLfloat shininess[] = { 30.0f };
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specular);
+    glMaterialfv(GL_FRONT, GL_SHININESS, shininess);
 
     glBegin(GL_QUADS);
     glNormal3f(0.0f, 1.0f, 0.0f);
 
-    // 레인 바닥 (파울라인 앞 ~ 핀 영역)
-    glVertex3f(-halfWidth, 0.0f, 3.0f);            // 시작점 (플레이어 뒤)
-    glVertex3f(halfWidth, 0.0f, 3.0f);
-    glVertex3f(halfWidth, 0.0f, -LANE_LENGTH);
-    glVertex3f(-halfWidth, 0.0f, -LANE_LENGTH);
-
+    // 텍스처 좌표와 함께 레인 바닥
+    // 앞쪽 (플레이어 방향) -> z = 3.0f, 뒤쪽 -> z = -LANE_LENGTH
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-halfWidth, 0.0f, 3.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(halfWidth, 0.0f, 3.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(halfWidth, 0.0f, -LANE_LENGTH);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-halfWidth, 0.0f, -LANE_LENGTH);
     glEnd();
 
-    // 레인 판자 줄무늬 (어두운 선)
-    GLfloat matStripe[] = { 0.6f, 0.45f, 0.3f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matStripe);
-
-    glBegin(GL_LINES);
-    float stripeSpacing = 0.1f;  // 판자 간격
-    for (float x = -halfWidth; x <= halfWidth; x += stripeSpacing) {
-        glVertex3f(x, 0.002f, 3.0f);
-        glVertex3f(x, 0.002f, -LANE_LENGTH);
+    if (laneSurfaceTexture != 0) {
+        Texture::Unbind();
     }
-    glEnd();
+    glDisable(GL_TEXTURE_2D);
+
+    // 레인 판자 줄무늬 (어두운 선)은 텍스처가 없는 경우에만 그린다
+    if (laneSurfaceTexture == 0) {
+        GLfloat matStripe[] = { 0.6f, 0.45f, 0.3f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matStripe);
+        glBegin(GL_LINES);
+        float stripeSpacing = 0.1f;  // 판자 간격
+        for (float x = -halfWidth; x <= halfWidth; x += stripeSpacing) {
+            glVertex3f(x, 0.002f, 3.0f);
+            glVertex3f(x, 0.002f, -LANE_LENGTH);
+        }
+        glEnd();
+    }
 }
 
 void Lane::DrawGutters() {
@@ -132,74 +153,91 @@ void Lane::DrawFoulLine() {
 }
 
 void Lane::DrawEnvironment() {
-    // 양쪽 벽
-    GLfloat matWall[] = { 0.4f, 0.35f, 0.3f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matWall);
-
+    // 벽, 천장, 뒤쪽 벽, 바닥에 텍스처 적용
     float wallDist = LANE_WIDTH / 2.0f + GUTTER_WIDTH + 0.5f;
     float wallHeight = 3.0f;
-
-    glBegin(GL_QUADS);
-
-    // 왼쪽 벽
-    glNormal3f(1.0f, 0.0f, 0.0f);
-    glVertex3f(-wallDist, 0.0f, 5.0f);
-    glVertex3f(-wallDist, wallHeight, 5.0f);
-    glVertex3f(-wallDist, wallHeight, -LANE_LENGTH - 2.0f);
-    glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 2.0f);
-
-    // 오른쪽 벽
-    glNormal3f(-1.0f, 0.0f, 0.0f);
-    glVertex3f(wallDist, 0.0f, 5.0f);
-    glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 2.0f);
-    glVertex3f(wallDist, wallHeight, -LANE_LENGTH - 2.0f);
-    glVertex3f(wallDist, wallHeight, 5.0f);
-
-    glEnd();
-
-    // 천장
-    GLfloat matCeiling[] = { 0.3f, 0.3f, 0.35f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matCeiling);
-
-    glBegin(GL_QUADS);
-    glNormal3f(0.0f, -1.0f, 0.0f);
-    glVertex3f(-wallDist, wallHeight, 5.0f);
-    glVertex3f(wallDist, wallHeight, 5.0f);
-    glVertex3f(wallDist, wallHeight, -LANE_LENGTH - 2.0f);
-    glVertex3f(-wallDist, wallHeight, -LANE_LENGTH - 2.0f);
-    glEnd();
-
-    // 뒤쪽 벽 (플레이어 뒤)
-    GLfloat matBackWall[] = { 0.5f, 0.45f, 0.4f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matBackWall);
-
-    glBegin(GL_QUADS);
-    glNormal3f(0.0f, 0.0f, -1.0f);
-    glVertex3f(-wallDist, 0.0f, 5.0f);
-    glVertex3f(wallDist, 0.0f, 5.0f);
-    glVertex3f(wallDist, wallHeight, 5.0f);
-    glVertex3f(-wallDist, wallHeight, 5.0f);
-    glEnd();
-
-    // 바닥 (레인 외 영역)
-    GLfloat matFloor[] = { 0.3f, 0.25f, 0.2f, 1.0f };
-    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matFloor);
-
     float gutterOuter = LANE_WIDTH / 2.0f + GUTTER_WIDTH;
 
+    // ----- 왼쪽/오른쪽 벽 -----
+    glEnable(GL_TEXTURE_2D);
+    if (wallTexture != 0) {
+        Texture::Bind(wallTexture, 0);
+    }
+    glBegin(GL_QUADS);
+    // 왼쪽 벽 (U: z 방향, V: 높이)
+    glNormal3f(1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-wallDist, 0.0f, 5.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-wallDist, wallHeight, 5.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-wallDist, wallHeight, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 2.0f);
+    // 오른쪽 벽
+    glNormal3f(-1.0f, 0.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(wallDist, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(wallDist, wallHeight, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(wallDist, wallHeight, 5.0f);
+    glEnd();
+    if (wallTexture != 0) {
+        Texture::Unbind();
+    }
+    glDisable(GL_TEXTURE_2D);
+
+    // ----- 천장 -----
+    glEnable(GL_TEXTURE_2D);
+    if (ceilingTexture != 0) {
+        Texture::Bind(ceilingTexture, 0);
+    }
+    glBegin(GL_QUADS);
+    glNormal3f(0.0f, -1.0f, 0.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-wallDist, wallHeight, 5.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(wallDist, wallHeight, 5.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(wallDist, wallHeight, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-wallDist, wallHeight, -LANE_LENGTH - 2.0f);
+    glEnd();
+    if (ceilingTexture != 0) {
+        Texture::Unbind();
+    }
+    glDisable(GL_TEXTURE_2D);
+
+    // ----- 뒤쪽 벽 (플레이어 뒤) -----
+    glEnable(GL_TEXTURE_2D);
+    if (wallTexture != 0) {
+        Texture::Bind(wallTexture, 0);
+    }
+    glBegin(GL_QUADS);
+    glNormal3f(0.0f, 0.0f, -1.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-wallDist, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(wallDist, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(wallDist, wallHeight, 5.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-wallDist, wallHeight, 5.0f);
+    glEnd();
+    if (wallTexture != 0) {
+        Texture::Unbind();
+    }
+    glDisable(GL_TEXTURE_2D);
+
+    // ----- 바닥 (레인 외 영역) -----
+    glEnable(GL_TEXTURE_2D);
+    if (floorTexture != 0) {
+        Texture::Bind(floorTexture, 0);
+    }
     glBegin(GL_QUADS);
     glNormal3f(0.0f, 1.0f, 0.0f);
     // 왼쪽 바닥
-    glVertex3f(-wallDist, 0.0f, 5.0f);
-    glVertex3f(-gutterOuter, 0.0f, 5.0f);
-    glVertex3f(-gutterOuter, 0.0f, -LANE_LENGTH - 2.0f);
-    glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(-wallDist, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(-gutterOuter, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(-gutterOuter, 0.0f, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 2.0f);
     // 오른쪽 바닥
-    glVertex3f(gutterOuter, 0.0f, 5.0f);
-    glVertex3f(wallDist, 0.0f, 5.0f);
-    glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 2.0f);
-    glVertex3f(gutterOuter, 0.0f, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(0.0f, 0.0f); glVertex3f(gutterOuter, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 0.0f); glVertex3f(wallDist, 0.0f, 5.0f);
+    glTexCoord2f(1.0f, 1.0f); glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 2.0f);
+    glTexCoord2f(0.0f, 1.0f); glVertex3f(gutterOuter, 0.0f, -LANE_LENGTH - 2.0f);
     glEnd();
+    if (floorTexture != 0) {
+        Texture::Unbind();
+    }
+    glDisable(GL_TEXTURE_2D);
 }
 
 void Lane::DrawPinArea() {

@@ -31,6 +31,12 @@ public:
     // 핀이 현재 레인에서 활동 중인지 여부. true이면 게임에 남아 있고 false이면 제거된 상태다.
     bool inPlay;
 
+    // --- 텍스처 관련 ---
+    // 핀 표면에 적용할 텍스처 ID. 모든 핀이 공유한다.
+    static GLuint texture;
+    // 텍스처 로딩 함수: Game::Init()에서 호출하여 textures/pin.jpg를 읽는다.
+    static void LoadTexture();
+
     // 생성자
     Pin();
     Pin(int number, vec3 pos);

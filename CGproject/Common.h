@@ -69,5 +69,7 @@ enum class SpinType {
 // 카메라 모드
 enum class CameraMode {
     FIRST_PERSON,   // 1인칭 (플레이어 시점)
-    BALL_FOLLOW     // 공 추적
+    BALL_FOLLOW,    // 공 추적
+    TOP_VIEW,       // 위에서 내려다보는 시점
+    SIDE_VIEW       // 측면에서 보는 시점
 };

@@ -8,6 +8,12 @@ public:
     GLuint gutterTexture;
     GLuint foulLineTexture;
 
+    // 새 텍스처: 레인 표면, 벽, 천장, 바닥
+    GLuint laneSurfaceTexture;
+    GLuint wallTexture;
+    GLuint ceilingTexture;
+    GLuint floorTexture;
+
     // 조명
     vec3 lightPosition;
 
