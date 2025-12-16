@@ -3,45 +3,49 @@
 
 class Camera {
 public:
-    // ÇöÀç ¸ğµå
+    // í˜„ì¬ ëª¨ë“œ
     CameraMode mode;
 
-    // 1ÀÎÄª Ä«¸Ş¶ó ¼Ó¼º
-    vec3 position;          // Ä«¸Ş¶ó À§Ä¡
-    float pitch;            // »óÇÏ °¢µµ (°í°³ µé±â/¼÷ÀÌ±â)
-    float yaw;              // ÁÂ¿ì °¢µµ
+    // 1ì¸ì¹­ ì¹´ë©”ë¼ ì†ì„±
+    vec3 position;          // ì¹´ë©”ë¼ ìœ„ì¹˜
+    float pitch;            // ìƒí•˜ ê°ë„ (ê³ ê°œ ë“¤ê¸°/ìˆ™ì´ê¸°)
+    float yaw;              // ì¢Œìš° ê°ë„
 
-    // °ø ÃßÀû Ä«¸Ş¶ó ¼Ó¼º
-    vec3 targetPosition;    // ÃßÀû ´ë»ó (°ø) À§Ä¡
-    vec3 targetDirection;   // °ø ÁøÇà ¹æÇâ
-    float followDistance;   // °ø°úÀÇ °Å¸®
-    float followHeight;     // °ø À§ ³ôÀÌ
+    // ê³µ ì¶”ì  ì¹´ë©”ë¼ ì†ì„±
+    vec3 targetPosition;    // ì¶”ì  ëŒ€ìƒ (ê³µ) ìœ„ì¹˜
+    vec3 targetDirection;   // ê³µ ì§„í–‰ ë°©í–¥
+    float followDistance;   // ê³µê³¼ì˜ ê±°ë¦¬
+    float followHeight;     // ê³µ ìœ„ ë†’ì´
 
-    // ÇÃ·¹ÀÌ¾î ÁÂ¿ì À§Ä¡ (A/D·Î Á¶Á¤)
+    // í”Œë ˆì´ì–´ ì¢Œìš° ìœ„ì¹˜ (A/Dë¡œ ì¡°ì •)
     float playerX;
 
-    // »ı¼ºÀÚ
+    // ìƒì„±ì
     Camera();
 
-    // ºä Çà·Ä Àû¿ë
+    // ë·° í–‰ë ¬ ì ìš©
     void Apply();
 
-    // 1ÀÎÄª ¸ğµå ¾÷µ¥ÀÌÆ®
+    // 1ì¸ì¹­ ëª¨ë“œ ì—…ë°ì´íŠ¸
     void UpdateFirstPerson();
 
-    // °ø ÃßÀû ¸ğµå ¾÷µ¥ÀÌÆ®
+    // ê³µ ì¶”ì  ëª¨ë“œ ì—…ë°ì´íŠ¸
     void UpdateBallFollow(vec3 ballPos, vec3 ballDir);
 
-    // ÀÔ·Â Ã³¸®
-    void LookUp(float amount);      // W: °í°³ µé±â
-    void LookDown(float amount);    // S: °í°³ ¼÷ÀÌ±â
-    void MoveLeft(float amount);    // A: ¿ŞÂÊ ÀÌµ¿
-    void MoveRight(float amount);   // D: ¿À¸¥ÂÊ ÀÌµ¿
+    // íƒ‘ë·° ë° ì‚¬ì´ë“œë·° ì—…ë°ì´íŠ¸: ê³µ ìœ„ì¹˜ë¥¼ ê¸°ë°˜ìœ¼ë¡œ ì¹´ë©”ë¼ë¥¼ ë°°ì¹˜í•œë‹¤.
+    void UpdateTopView(vec3 ballPos);
+    void UpdateSideView(vec3 ballPos);
 
-    // ¸ğµå ÀüÈ¯
+    // ì…ë ¥ ì²˜ë¦¬
+    void LookUp(float amount);      // W: ê³ ê°œ ë“¤ê¸°
+    void LookDown(float amount);    // S: ê³ ê°œ ìˆ™ì´ê¸°
+    void MoveLeft(float amount);    // A: ì™¼ìª½ ì´ë™
+    void MoveRight(float amount);   // D: ì˜¤ë¥¸ìª½ ì´ë™
+
+    // ëª¨ë“œ ì „í™˜
     void SetMode(CameraMode newMode);
 
-    // ½ÃÁ¡ ¹æÇâ º¤ÅÍ
+    // ì‹œì  ë°©í–¥ ë²¡í„°
     vec3 GetForward();
     vec3 GetRight();
     vec3 GetUp();

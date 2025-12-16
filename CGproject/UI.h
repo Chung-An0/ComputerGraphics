@@ -1,17 +1,17 @@
 #pragma once
 #include "Common.h"
 
-// ÇÁ·¹ÀÓ Á¤º¸
+// í”„ë ˆì„ ì •ë³´
 struct Frame {
     int firstThrow;
     int secondThrow;
-    int totalScore;     // ´©Àû Á¡¼ö
+    int totalScore;     // ëˆ„ì  ì ìˆ˜
     bool isStrike;
     bool isSpare;
     bool isComplete;
 };
 
-// ½ºÇÉ ¹öÆ° ¿µ¿ª
+// ìŠ¤í•€ ë²„íŠ¼ ì˜ì—­
 struct Button {
     float x, y, width, height;
     const char* label;
@@ -22,88 +22,87 @@ struct Button {
 
 class UI {
 public:
-    // °ÔÀÌÁö
+    // ê²Œì´ì§€
     float powerGauge;           // 0.0 ~ 1.0
     bool isCharging;
     float gaugeSpeed;
 
-    // ¸Ş´º »óÅÂ
+    // ë©”ë‰´ ìƒíƒœ
     bool menuOpen;
     int selectedBall;           // 0, 1, 2
-    int previewBall;            // ¸Ş´º¿¡¼­ º¸¿©ÁÖ´Â °ø
+    int previewBall;            // ë©”ë‰´ì—ì„œ ë³´ì—¬ì£¼ëŠ” ê³µ
     SpinType selectedSpin;
 
-    // [Ãß°¡] ¸Ş´º Ä«Å×°í¸® (0:Ball, 1:Lane, 2:Wall, 3:Ceiling, 4:Floor)
+    // [2ë²ˆ ì¶”ê°€] ë©”ë‰´ ì¹´í…Œê³ ë¦¬ (0: Ball, 1:Lane, 2:Wall, 3:Ceiling, 4:Floor)
     int menuCategory;
 
-    // [Ãß°¡] °¢ Ä«Å×°í¸®º° ¹Ì¸®º¸±â ÀÎµ¦½º
+    // [2ë²ˆ ì¶”ê°€] ê° ì¹´í…Œê³ ë¦¬ë³„ ë¯¸ë¦¬ë³´ê¸° ì¸ë±ìŠ¤
     int previewLaneTex;
     int previewWallTex;
     int previewCeilingTex;
     int previewFloorTex;
 
-    // [Ãß°¡] ÅØ½ºÃ³ ¹Ì¸®º¸±â ±×¸®±â ÇÔ¼ö
-    void DrawTexturePreview(GLuint texID, float x, float y, float size);
-
-    // ½ºÇÉ ¹öÆ°µé
+    // ìŠ¤í•€ ë²„íŠ¼ë“¤
     Button spinButtons[3];
 
-    // Á¡¼öÆÇ
+    // ì ìˆ˜íŒ
     Frame frames[10];
     int currentFrame;
     int currentThrow;           // 1 or 2
 
-    // Ä«¸Ş¶ó pitch (Á¡¼öÆÇ º¸ÀÌ´ÂÁö Ã¼Å©¿ë)
+    // ì¹´ë©”ë¼ pitch (ì ìˆ˜íŒ ë³´ì´ëŠ”ì§€ ì²´í¬ìš©)
     float cameraPitch;
 
-    // »ı¼ºÀÚ
+    // ìƒì„±ì
     UI();
 
-    // ÃÊ±âÈ­
+    // ì´ˆê¸°í™”
     void Reset();
 
-    // °ÔÀÌÁö ¾÷µ¥ÀÌÆ®
+    // ê²Œì´ì§€ ì—…ë°ì´íŠ¸
     void UpdateGauge(float dt);
     void StartCharging();
-    float StopCharging();       // ÇöÀç ÆÄ¿ö ¹İÈ¯
+    float StopCharging();       // í˜„ì¬ íŒŒì›Œ ë°˜í™˜
 
-    // Á¡¼ö °è»ê
+    // ì ìˆ˜ ê³„ì‚°
     void RecordThrow(int pinsKnocked);
     int CalculateTotalScore();
 
-    // ·»´õ¸µ
+    // ë Œë”ë§
     void Draw();
     void DrawPowerGauge();
-    void DrawScoreboard3D();    // 3D ÃµÀå Á¡¼öÆÇ
-    void DrawMenu();            // Áß¾Ó ¸Ş´º
-    void DrawSpinButtons();     // ÇÏ´Ü ½ºÇÉ ¹öÆ°
-    void DrawBallPreview();     // ¸Ş´º ³» °ø ¹Ì¸®º¸±â
+    void DrawScoreboard3D();    // 3D ì²œì¥ ì ìˆ˜íŒ
+    void DrawMenu();            // ì¤‘ì•™ ë©”ë‰´
+    void DrawSpinButtons();     // í•˜ë‹¨ ìŠ¤í•€ ë²„íŠ¼
+    void DrawBallPreview();     // ë©”ë‰´ ë‚´ ê³µ ë¯¸ë¦¬ë³´ê¸°
+    void DrawTexturePreview(GLuint texID, float x, float y, float size);  // [2ë²ˆ] í…ìŠ¤ì²˜ ë¯¸ë¦¬ë³´ê¸°
 
-    // ¸Ş´º Á¶ÀÛ
+    // ë©”ë‰´ ì¡°ì‘
     void ToggleMenu();
-    void NextCategory();        // [Ãß°¡] TabÅ°·Î Ä«Å×°í¸® º¯°æ
-    void MenuLeft();            // ¹æÇâÅ° ¿ŞÂÊ (¾ÆÀÌÅÛ º¯°æ)
-    void MenuRight();           // ¹æÇâÅ° ¿À¸¥ÂÊ (¾ÆÀÌÅÛ º¯°æ)
-    void SelectItem();          // [ÀÌ¸§ º¯°æ] ¼±ÅÃ È®Á¤ (Enter)
+    void NextCategory();        // [2ë²ˆ] Qí‚¤ë¡œ ì¹´í…Œê³ ë¦¬ ì „í™˜ (Tab ëŒ€ì²´)
+    void MenuLeft();            // ë°©í–¥í‚¤ ì™¼ìª½ (ì•„ì´í…œ ë³€ê²½)
+    void MenuRight();           // ë°©í–¥í‚¤ ì˜¤ë¥¸ìª½ (ì•„ì´í…œ ë³€ê²½)
+    void SelectBall();          // [1ë²ˆ í˜¸í™˜] ê³µë§Œ ì„ íƒ
+    void SelectItem();          // [2ë²ˆ] ëª¨ë“  ì„ íƒ í™•ì • (ê³µ + í…ìŠ¤ì²˜)
 
-    // ¸¶¿ì½º Ã³¸®
+    // ë§ˆìš°ìŠ¤ ì²˜ë¦¬
     void OnMouseClick(int x, int y);
     void OnMouseMove(int x, int y);
     bool IsPointInButton(int x, int y, Button& btn);
 
-    // ÅØ½ºÆ® ·»´õ¸µ ÇïÆÛ
+    // í…ìŠ¤íŠ¸ ë Œë”ë§ í—¬í¼
     void DrawText(float x, float y, const char* text, void* font = GLUT_BITMAP_HELVETICA_18);
     void DrawTextLarge(float x, float y, const char* text);
     void DrawTextCentered(float x, float y, const char* text, void* font = GLUT_BITMAP_HELVETICA_18);
 
-    // 2D ¸ğµå ÀüÈ¯
+    // 2D ëª¨ë“œ ì „í™˜
     void Begin2D();
     void End2D();
 
-    // °ÔÀÓ »óÅÂ Ç¥½Ã
+    // ê²Œì„ ìƒíƒœ í‘œì‹œ
     void DrawGameState(GameState state);
     void DrawStrikeSpare(bool isStrike, bool isSpare);
 
-    // Ä«¸Ş¶ó pitch ¾÷µ¥ÀÌÆ® (Á¡¼öÆÇ °¡½Ã¼º)
+    // ì¹´ë©”ë¼ pitch ì—…ë°ì´íŠ¸ (ì ìˆ˜íŒ ê°€ì‹œì„±)
     void SetCameraPitch(float pitch);
 };

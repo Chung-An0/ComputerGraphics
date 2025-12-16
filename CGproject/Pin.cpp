@@ -1,43 +1,209 @@
 #include "Pin.h"
+#include <cstdlib>
+#include <ctime>
+#include <cmath>
 
-// ÇÉ ¹èÄ¡ À§Ä¡ (»ï°¢Çü)
-//        7  8  9  10
-//          4  5  6
-//            2  3
-//              1
+#ifdef _WIN32
+#include <windows.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+#endif
+
+// static ë©¤ë²„ ë³€ìˆ˜ ì´ˆê¸°í™”
+GLuint Pin::pinTextureID = 0;
+bool Pin::textureLoaded = false;
+
+//í…ìŠ¤ì²˜ëŠ” í•€í…ìŠ¤ì²˜id ì°¸ì¡°
+GLuint& Pin::texture = Pin::pinTextureID;
+
+// í•€ ë°°ì¹˜ ìœ„ì¹˜ (ì‚¼ê°í˜•)
 static vec3 PIN_POSITIONS[10] = {
-    vec3(0.0f, 0.0f, 0.0f),                          // 1¹ø (Çìµå ÇÉ)
-    vec3(-PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING),   // 2¹ø
-    vec3(PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING),    // 3¹ø
-    vec3(-PIN_SPACING, 0.0f, -PIN_SPACING * 2),      // 4¹ø
-    vec3(0.0f, 0.0f, -PIN_SPACING * 2),              // 5¹ø
-    vec3(PIN_SPACING, 0.0f, -PIN_SPACING * 2),       // 6¹ø
-    vec3(-PIN_SPACING * 1.5f, 0.0f, -PIN_SPACING * 3), // 7¹ø
-    vec3(-PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING * 3), // 8¹ø
-    vec3(PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING * 3),  // 9¹ø
-    vec3(PIN_SPACING * 1.5f, 0.0f, -PIN_SPACING * 3)   // 10¹ø
+    vec3(0.0f, 0.0f, 0.0f),                          // 1ë²ˆ
+    vec3(-PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING),   // 2ë²ˆ
+    vec3(PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING),    // 3ë²ˆ
+    vec3(-PIN_SPACING, 0.0f, -PIN_SPACING * 2),      // 4ë²ˆ
+    vec3(0.0f, 0.0f, -PIN_SPACING * 2),              // 5ë²ˆ
+    vec3(PIN_SPACING, 0.0f, -PIN_SPACING * 2),       // 6ë²ˆ
+    vec3(-PIN_SPACING * 1.5f, 0.0f, -PIN_SPACING * 3), // 7ë²ˆ
+    vec3(-PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING * 3), // 8ë²ˆ
+    vec3(PIN_SPACING * 0.5f, 0.0f, -PIN_SPACING * 3),  // 9ë²ˆ
+    vec3(PIN_SPACING * 1.5f, 0.0f, -PIN_SPACING * 3)   // 10ë²ˆ
 };
 
+void Pin::InitTexture(const char* filepath) {
+    if (textureLoaded) return;
+    pinTextureID = Texture::Load(filepath);
+    textureLoaded = (pinTextureID != 0);
+}
+
+// ========== Cardinal Spline ë³´ê°„ (1D) ==========
+float Pin::EvaluateCardinalSpline1D(float p0, float p1, float p2, float p3, float t) {
+    const float tension = 0.5f;
+    float t2 = t * t;
+    float t3 = t2 * t;
+
+    float b0 = -tension * t3 + 2.0f * tension * t2 - tension * t;
+    float b1 = (2.0f - tension) * t3 + (tension - 3.0f) * t2 + 1.0f;
+    float b2 = (tension - 2.0f) * t3 + (3.0f - 2.0f * tension) * t2 + tension * t;
+    float b3 = tension * t3 - tension * t2;
+
+    return p0 * b0 + p1 * b1 + p2 * b2 + p3 * b3;
+}
+
+// ========== ë³¼ë§í•€ í”„ë¡œí•„ ê³¡ì„  ==========
+vec2 Pin::GetProfilePoint(float t) {
+    const int numControlPoints = 8;
+    float controlY[8] = {
+        0.00f, 0.25f, 0.70f, 0.85f,
+        0.90f, 0.95f, 0.98f, 1.00f
+    };
+
+    float controlRadius[8] = {
+        0.028f, 0.056f, 0.020f, 0.023f,
+        0.018f, 0.012f, 0.002f, 0.001f
+    };
+
+    int segment = 0;
+    for (int i = 0; i < numControlPoints - 1; i++) {
+        if (t >= controlY[i] && t <= controlY[i + 1]) {
+            segment = i;
+            break;
+        }
+    }
+
+    if (segment == 0 && t < controlY[0]) segment = 0;
+    if (segment >= numControlPoints - 2) segment = numControlPoints - 3;
+
+    int i0 = std::max(0, segment - 1);
+    int i1 = segment;
+    int i2 = std::min(numControlPoints - 1, segment + 1);
+    int i3 = std::min(numControlPoints - 1, segment + 2);
+
+    float localT = 0.0f;
+    if (controlY[i2] - controlY[i1] > 0.0001f) {
+        localT = (t - controlY[i1]) / (controlY[i2] - controlY[i1]);
+    }
+    localT = std::max(0.0f, std::min(1.0f, localT));
+
+    float radius = EvaluateCardinalSpline1D(
+        controlRadius[i0],
+        controlRadius[i1],
+        controlRadius[i2],
+        controlRadius[i3],
+        localT
+    );
+
+    if (radius < 0.001f) radius = 0.001f;
+    float y = t * height;
+
+    return vec2(radius, y);
+}
+
+// ========== íšŒì „ì²´ ë©”ì‰¬ ìƒì„± ==========
+void Pin::GenerateRevolutionMesh() {
+    if (meshGenerated) return;
+
+    vertices.clear();
+    indices.clear();
+
+    const int heightSegments = 30;
+    const int radialSegments = 32;
+
+    for (int i = 0; i <= heightSegments; i++) {
+        float t = (float)i / (float)heightSegments;
+        t = t * 0.90f;
+
+        vec2 profile = GetProfilePoint(t);
+        float r = profile.x;
+        float y = profile.y - height / 2.0f;
+
+        float eps = 0.01f;
+        vec2 profileNext = GetProfilePoint(std::min(1.0f, t + eps));
+        vec2 tangent2D = normalize(profileNext - profile);
+
+        for (int j = 0; j <= radialSegments; j++) {
+            float angle = (float)j / (float)radialSegments * 2.0f * 3.14159265f;
+
+            Vertex v;
+            v.position = vec3(r * cos(angle), y, r * sin(angle));
+
+            vec3 radialDir = normalize(vec3(cos(angle), 0.0f, sin(angle)));
+            vec3 heightDir = vec3(0.0f, tangent2D.y, 0.0f);
+            v.normal = normalize(radialDir - heightDir * tangent2D.x);
+
+            v.texCoord = vec2(
+                (float)j / (float)radialSegments,
+                1.0f - (t / 0.90f)
+            );
+
+            vertices.push_back(v);
+        }
+    }
+
+    for (int i = 0; i < heightSegments; i++) {
+        for (int j = 0; j < radialSegments; j++) {
+            int current = i * (radialSegments + 1) + j;
+            int next = current + radialSegments + 1;
+
+            indices.push_back(current);
+            indices.push_back(next);
+            indices.push_back(current + 1);
+
+            indices.push_back(current + 1);
+            indices.push_back(next);
+            indices.push_back(next + 1);
+        }
+    }
+
+    meshGenerated = true;
+}
+
+// ========== ìƒì„±ì ==========
 Pin::Pin() {
     radius = PIN_RADIUS;
     height = PIN_HEIGHT;
-    mass = 1.5f;  // ¾à 1.5kg
+    mass = 1.5f;
     pinNumber = 0;
+    meshGenerated = false;
+
+    centerOfMass = vec3(0.0f, height * 0.35f, 0.0f);
+    inertia = mass * radius * radius * 0.4f;
+
+    // âœ… í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥: inPlay
+    inPlay = true;
+    effectActive = false;
+    effectTimer = 0.0f;
+
     Reset();
+    GenerateRevolutionMesh();
 }
 
 Pin::Pin(int number, vec3 pos) {
     radius = PIN_RADIUS;
     height = PIN_HEIGHT;
+
+    // âœ… ì›ë˜ â€œìì—°ìŠ¤ëŸ½ë˜â€ ë¬¼ë¦¬ íŒŒë¼ë¯¸í„° ê·¸ëŒ€ë¡œ ìœ ì§€ (ì¤‘ìš”)
     mass = 1.5f;
     pinNumber = number;
     position = pos;
-    position.y = height / 2.0f;  // ÇÉ Áß½É ³ôÀÌ
+    position.y = height / 2.0f;
+
+    centerOfMass = vec3(0.0f, height * 0.35f, 0.0f);
+    inertia = mass * radius * radius * 0.4f;
+
     isStanding = true;
     isFalling = false;
     velocity = vec3(0.0f);
     angularVelocity = vec3(0.0f);
     rotation = vec3(0.0f);
+    meshGenerated = false;
+
+    // âœ… í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥: inPlay
+    inPlay = true;
+    effectActive = false;
+    effectTimer = 0.0f;
+
+    GenerateRevolutionMesh();
 }
 
 void Pin::Reset() {
@@ -47,143 +213,272 @@ void Pin::Reset() {
     angularVelocity = vec3(0.0f);
     rotation = vec3(0.0f);
     position.y = height / 2.0f;
+
+    // âœ… í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥
+    inPlay = true;
+    effectActive = false;
+    effectTimer = 0.0f;
 }
 
+// ========== ë¬¼ë¦¬ ì—…ë°ì´íŠ¸ ==========
 void Pin::Update(float dt) {
+    if (!inPlay) return;
     if (isStanding && !isFalling) return;
 
-    // Áß·Â Àû¿ë
     velocity.y += GRAVITY * dt;
-
-    // À§Ä¡ ¾÷µ¥ÀÌÆ®
     position += velocity * dt;
 
-    // È¸Àü ¾÷µ¥ÀÌÆ®
-    rotation += angularVelocity * dt * 50.0f;
+    rotation += angularVelocity * dt * 57.2958f;
 
-    // ¸¶Âû·Î °¨¼Ó
-    velocity *= 0.98f;
-    angularVelocity *= 0.95f;
+    // âœ… íšŒì „ ê°ë„ ì œí•œ (360ë„ ë„˜ì–´ê°€ì§€ ì•Šë„ë¡)
+    if (rotation.x > 180.0f) rotation.x -= 360.0f;
+    if (rotation.x < -180.0f) rotation.x += 360.0f;
+    if (rotation.z > 180.0f) rotation.z -= 360.0f;
+    if (rotation.z < -180.0f) rotation.z += 360.0f;
 
-    // ¹Ù´Ú Ãæµ¹
+    velocity *= 0.97f;
+    angularVelocity *= 0.88f;
+
     CheckFloor();
 
-    // ¾²·¯Áü ÆÇÁ¤
-    if (abs(rotation.x) > 45.0f || abs(rotation.z) > 45.0f) {
+    if (abs(rotation.x) > 35.0f || abs(rotation.z) > 35.0f) {
         isStanding = false;
     }
+
+    // âœ… ì“°ëŸ¬ì§„ í•€ì˜ ì•ˆì •í™” ê°œì„ 
+    if (IsDown()) {
+        // ë°”ë‹¥ì— ë‹¿ì•˜ì„ ë•Œ íšŒì „ì„ ë¹ ë¥´ê²Œ ê°ì‡ 
+        if (position.y <= height / 2.0f * 0.5f) {  // ë†’ì´ê°€ ì ˆë°˜ ì´í•˜
+            angularVelocity *= 0.92f;  // íšŒì „ ë” ë¹¨ë¦¬ ë©ˆì¶¤
+        }
+
+        if (length(velocity) < 0.1f) {
+            velocity *= 0.9f;
+            angularVelocity *= 0.85f;
+
+            if (length(velocity) < 0.05f && length(angularVelocity) < 0.05f) {
+                velocity = vec3(0.0f);
+                angularVelocity = vec3(0.0f);
+            }
+        }
+    }
+
+    float wallDist = LANE_WIDTH / 2.0f + GUTTER_WIDTH + 0.5f;
+    if (fabs(position.x) > wallDist + 0.2f ||
+        position.z > 4.0f ||
+        position.z < -LANE_LENGTH - 1.0f ||
+        position.y > 1.0f) {
+        inPlay = false;
+        return;
+    }
+    else if (fabs(position.x) >= (wallDist - radius)) {
+        inPlay = false;
+        return;
+    }
 }
+// ========== ë³¼-í•€ ì¶©ëŒ (ìˆ˜ì •)
+bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVelocity, vec3 ballAngularVelocity) {
+    if (!inPlay) return false;
 
-bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity) {
-    if (!isStanding) return false;
-
-    // ½Ç¸°´õ-±¸ Ãæµ¹ (Ãæµ¹ ¹üÀ§ È®´ë)
     vec3 toPin = position - ballPos;
-    toPin.y = 0;  // ¼öÆò °Å¸®¸¸
-
     float dist = length(toPin);
-    float collisionDist = (radius + ballRadius) * 1.3f;  // Ãæµ¹ ¹üÀ§ 30% È®´ë
+    float collisionDist = (radius + ballRadius) * 1.15f;
 
-    if (dist < collisionDist) {
-        // Ãæµ¹!
-        isFalling = true;
-
+    if (dist < collisionDist && dist > 0.001f) {
         vec3 impactDir = normalize(toPin);
-        float impactForce = length(ballVelocity) * 3.0f;//Ãæ°İ·Â Áõ°¡
+        float ballSpeed = length(ballVelocity);
 
-        // ±âº» Ãæ°İ Àû¿ë
-        velocity = impactDir * impactForce * 0.8f;
+        // ë³¼ë§ê³µì´ í›¨ì”¬ ë¬´ê²ê²Œ (6. 8kg â†’ 7.5kg)
+        float ballMass = 7.5f;
+        float totalMass = ballMass + mass;
 
-        // °øÀÇ È¸Àü(½ºÇÉ)¿¡ µû¸¥ Ãß°¡ Èû
-        vec3 spinEffect = cross(ballAngularVelocity, impactDir) * 0.4f;
-        velocity += spinEffect;
+        if (isStanding) {
+            isFalling = true;
+            isStanding = false;
 
-        velocity.y = impactForce * 0.4f;  // À§·Î Æ¢¾î¿À¸§
+            float impactHeight = ballPos.y - (position.y - height / 2.0f);
+            impactHeight = std::max(0.0f, std::min(height, impactHeight));
+            float heightRatio = impactHeight / height;
 
-        // È¸Àü Àû¿ë (°øÀÇ ÁøÇà ¹æÇâ°ú ½ºÇÉ ±â¹İ)
-        vec3 ballDir = normalize(ballVelocity);
-        angularVelocity.x = -impactDir.z * impactForce * 2.0f + ballAngularVelocity.y * 0.5f;
-        angularVelocity.y = (float)(rand() % 60 - 30) / 10.0f;
-        angularVelocity.z = impactDir.x * impactForce * 2.0f - ballAngularVelocity.y * 0.5f;
+            // í•€ì´ ë” ì•½í•˜ê²Œ ë°˜ì‘ (ë°˜ë°œê³„ìˆ˜ ë‚®ì¶¤)
+            float restitution = 0.25f;  // 0.4f â†’ 0.25f
+            vec3 ballVelNormal = dot(ballVelocity, impactDir) * impactDir;
+            float ballVelMag = length(ballVelNormal);
 
+            // í•€ì´ ë°›ëŠ” ì†ë„ ê³„ì‚° (ê³µì˜ ì§ˆëŸ‰ì´ í›¨ì”¬ í¬ë¯€ë¡œ í•€ì´ ë§ì´ íŠ•ê¹€)
+            float pinSpeed = (2.0f * ballMass * ballVelMag) / totalMass;
+
+            // í•€ì˜ ì†ë„ - ìˆ˜í‰ì€ ì¡°ê¸ˆ ê°ì†Œ, ìˆ˜ì§ì€ ë” ê°ì†Œ
+            velocity = impactDir * pinSpeed * 0.50f;  // 0.55f â†’ 0.50f
+            velocity.y = pinSpeed * 0.10f * (0.8f + heightRatio * 0.3f);  // 0.12f â†’ 0.10f
+
+            // ìŠ¤í•€ íš¨ê³¼ë„ ì•½í•˜ê²Œ
+            vec3 spinEffect = cross(ballAngularVelocity, impactDir) * 0.10f;  // 0.15f â†’ 0.10f
+            velocity += spinEffect;
+
+            // í† í¬ ê³„ì‚° (íšŒì „ ì•½í•˜ê²Œ)
+            vec3 leverArm = vec3(0.0f, impactHeight - centerOfMass.y, 0.0f);
+            vec3 impactForce = impactDir * pinSpeed;
+            vec3 torque = cross(leverArm, impactForce);
+
+            angularVelocity = torque / inertia * 0.7f;  // 0.8f â†’ 0.7f
+            angularVelocity.x += -impactDir.z * pinSpeed * 0.85f;  // 0.9f â†’ 0.85f
+            angularVelocity.z += impactDir.x * pinSpeed * 0.85f;
+            angularVelocity.y = (float)(rand() % 20 - 10) / 35.0f;  // 30. 0f â†’ 35.0f
+
+            // ë³¼ë§ê³µì€ ê±°ì˜ ì˜í–¥ ì•ˆ ë°›ìŒ (ì§ˆëŸ‰ì´ 5ë°° ì°¨ì´)
+            float ballSpeedLoss = (mass * pinSpeed) / ballMass * 0.8f;  // ê³„ìˆ˜ ì¶”ê°€
+            ballVelocity -= impactDir * ballSpeedLoss * (1.0f + restitution) * 0.6f;  // 0.6ë°° ê°ì†Œ
+
+            // ë³¼ë§ê³µ ìµœì†Œ ì†ë„ ë³´ì¥ (ê³µì´ ê±°ì˜ ì•ˆ ëŠë ¤ì§)
+            if (length(ballVelocity) < ballSpeed * 0.4f) {  // 0.3f â†’ 0.4f
+                ballVelocity = normalize(ballVelocity) * ballSpeed * 0.4f;
+            }
+        }
+        else {
+            //  ì“°ëŸ¬ì§„ í•€ - ê³µì€ ê±°ì˜ ì˜í–¥ ì—†ìŒ
+            float restitution = 0.10f;  // 0.15f â†’ 0.10f (ë” ì•½í•˜ê²Œ)
+
+            vec3 relativeVel = ballVelocity - velocity;
+            float velAlongNormal = dot(relativeVel, impactDir);
+
+            if (velAlongNormal < 0) return false;
+
+            float massRatio = mass / ballMass;  // ì•½ 0.20 (1: 5 ë¹„ìœ¨)
+            float impulse = (1.0f + restitution) * velAlongNormal / (1.0f + massRatio);
+
+            vec3 pushDir = impactDir;
+            pushDir.y = 0;
+            if (length(pushDir) > 0.001f) {
+                pushDir = normalize(pushDir);
+
+                //  ì“°ëŸ¬ì§„ í•€ë„ ì•½í•˜ê²Œë§Œ ë°€ë¦¼
+                velocity.x += pushDir.x * impulse * massRatio * 0.35f;  // 0.4f â†’ 0.35f
+                velocity.z += pushDir.z * impulse * massRatio * 0.35f;
+                velocity.y += impulse * massRatio * 0.015f;  // 0.02f â†’ 0.015f
+
+                //  íšŒì „ë„ ì•½í•˜ê²Œ
+                angularVelocity += vec3(
+                    pushDir.z * impulse * massRatio * 0.15f,  // 0.2f â†’ 0.15f
+                    0.0f,
+                    -pushDir.x * impulse * massRatio * 0.15f
+                );
+            }
+
+            //  ë³¼ë§ê³µì€ ê±°ì˜ ì˜í–¥ ì—†ìŒ
+            ballVelocity -= impactDir * impulse * 0.05f;  // 0.08f â†’ 0.05f
+        }
+
+#ifdef _WIN32
+        PlaySound(TEXT("sounds\\pin_hit.wav"), NULL, SND_FILENAME | SND_ASYNC);
+#endif
         return true;
     }
 
     return false;
 }
 
+// ========== í•€-í•€ ì¶©ëŒ ==========
 bool Pin::CheckCollisionWithPin(Pin& other) {
-    if (!other.isFalling && !other.isStanding) return false;
+    //  í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥: ì œê±°ëœ í•€ê³¼ëŠ” ì¶©ëŒ ì•ˆ í•¨
+    if (!inPlay || !other.inPlay) return false;
+
+    if (!isFalling && !isStanding && !other.isFalling && !other.isStanding) {
+        if (length(velocity) < 0.01f && length(other.velocity) < 0.01f) {
+            return false;
+        }
+    }
+
     if (this == &other) return false;
 
     vec3 diff = other.position - position;
+    diff.y = 0;
     float dist = length(diff);
-    float collisionDist = radius * 2.8f;  // ¾à°£ ³Ğ°Ô
+    float collisionDist = radius * 2.3f;
 
     if (dist < collisionDist && dist > 0.001f) {
         vec3 normal = normalize(diff);
 
-        // À§Ä¡ º¸Á¤
         float overlap = collisionDist - dist;
         position -= normal * overlap * 0.5f;
         other.position += normal * overlap * 0.5f;
 
-        // ¼Óµµ ±³È¯ (Åº¼º Ãæµ¹)
         vec3 relVel = velocity - other.velocity;
+        relVel.y = 0;
         float velAlongNormal = dot(relVel, normal);
 
         if (velAlongNormal > 0) return false;
 
-        float restitution = 0.8f;
+        float restitution = 0.35f;
         float impulse = -(1 + restitution) * velAlongNormal / 2.0f;
 
         vec3 impulseVec = impulse * normal;
-        velocity += impulseVec;
-        other.velocity -= impulseVec;
+        velocity.x += impulseVec.x;
+        velocity.z += impulseVec.z;
+        other.velocity.x -= impulseVec.x;
+        other.velocity.z -= impulseVec.z;
 
-        // ¾²·¯Áö´Â ÇÉÀÌ ¼­ÀÖ´Â ÇÉÀ» Ä¥ ¶§
         if (isFalling && other.isStanding) {
-            float hitForce = length(velocity);
-            if (hitForce > 0.2f) {  // ´õ ½±°Ô ¾²·¯Áü
+            float hitForce = length(vec3(velocity.x, 0, velocity.z));
+            if (hitForce > 0.25f) {
                 other.isStanding = false;
                 other.isFalling = true;
-                other.velocity = normal * hitForce * 0.6f;
-                other.velocity.y = 0.8f;
 
-                // ¸ÂÀº ¹æÇâÀ¸·Î È¸Àü
-                other.angularVelocity = vec3(
-                    normal.z * hitForce * 2.0f,
-                    (float)(rand() % 40 - 20) / 10.0f,
-                    -normal.x * hitForce * 2.0f
-                );
+                float impactHeight = position.y - (other.position.y - other.height / 2.0f);
+                impactHeight = std::max(0.0f, std::min(other.height * 0.6f, impactHeight));
+                float heightRatio = impactHeight / other.height;
+
+                other.velocity = normal * hitForce * 0.5f;
+                other.velocity.y = hitForce * 0.08f * (1.0f + heightRatio * 0.3f);
+
+                vec3 leverArm = vec3(0.0f, impactHeight - other.centerOfMass.y, 0.0f);
+                vec3 force = normal * hitForce;
+                vec3 torque = cross(leverArm, force);
+
+                other.angularVelocity = torque / other.inertia * 0.7f;
+                other.angularVelocity.x += normal.z * hitForce * 0.8f;
+                other.angularVelocity.z += -normal.x * hitForce * 0.8f;
+                other.angularVelocity.y = (float)(rand() % 20 - 10) / 25.0f;
             }
         }
 
-        // ¼­ÀÖ´Â ÇÉÀÌ ¾²·¯Áö´Â ÇÉ¿¡°Ô ¸ÂÀ» ¶§
         if (isStanding && other.isFalling) {
-            float hitForce = length(other.velocity);
-            if (hitForce > 0.5f) {
+            float hitForce = length(vec3(other.velocity.x, 0, other.velocity.z));
+            if (hitForce > 0.25f) {
                 isStanding = false;
                 isFalling = true;
-                velocity = -normal * hitForce * 0.6f;
-                velocity.y = 0.8f;
 
-                angularVelocity = vec3(
-                    -normal.z * hitForce * 2.0f,
-                    (float)(rand() % 40 - 20) / 10.0f,
-                    normal.x * hitForce * 2.0f
-                );
+                float impactHeight = other.position.y - (position.y - height / 2.0f);
+                impactHeight = std::max(0.0f, std::min(height * 0.6f, impactHeight));
+                float heightRatio = impactHeight / height;
+
+                velocity = -normal * hitForce * 0.5f;
+                velocity.y = hitForce * 0.08f * (1.0f + heightRatio * 0.3f);
+
+                vec3 leverArm = vec3(0.0f, impactHeight - centerOfMass.y, 0.0f);
+                vec3 force = -normal * hitForce;
+                vec3 torque = cross(leverArm, force);
+
+                angularVelocity = torque / inertia * 0.7f;
+                angularVelocity.x += -normal.z * hitForce * 0.8f;
+                angularVelocity.z += normal.x * hitForce * 0.8f;
+                angularVelocity.y = (float)(rand() % 20 - 10) / 25.0f;
             }
         }
 
-        // µÑ ´Ù ¾²·¯Áö´Â ÁßÀÏ ¶§
         if (isFalling && other.isFalling) {
-            // °¢¼Óµµµµ ÀÏºÎ Àü´Ş
+            velocity *= 0.95f;
+            other.velocity *= 0.95f;
+
             vec3 avgAngVel = (angularVelocity + other.angularVelocity) * 0.5f;
-            angularVelocity = avgAngVel + vec3((rand() % 20 - 10) / 10.0f, 0, (rand() % 20 - 10) / 10.0f);
-            other.angularVelocity = avgAngVel + vec3((rand() % 20 - 10) / 10.0f, 0, (rand() % 20 - 10) / 10.0f);
+            angularVelocity = avgAngVel * 0.85f;
+            other.angularVelocity = avgAngVel * 0.85f;
         }
 
+        // âœ… í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥: í•€-í•€ ì¶©ëŒ ì‚¬ìš´ë“œ
+#ifdef _WIN32
+        PlaySound(TEXT("sounds\\pin_hit.wav"), NULL, SND_FILENAME | SND_ASYNC);
+#endif
         return true;
     }
 
@@ -193,38 +488,91 @@ bool Pin::CheckCollisionWithPin(Pin& other) {
 void Pin::ApplyImpact(vec3 impactDir, float force) {
     isFalling = true;
 
-    // ¼Óµµ Àû¿ë
     velocity = impactDir * force * 0.8f;
-    velocity.y = force * 0.3f;  // »ìÂ¦ À§·Î
+    velocity.y = force * 0.3f;
 
-    // È¸Àü Àû¿ë (Ãæµ¹ ¹æÇâ ¹İ´ë·Î ¾²·¯Áü)
     angularVelocity.x = -impactDir.z * force * 2.0f;
     angularVelocity.z = impactDir.x * force * 2.0f;
 }
 
+// ========== CheckFloor í•¨ìˆ˜ (ì™„ì „íˆ ê°œì„ ) ==========
 void Pin::CheckFloor() {
-    // ¹Ù´Ú ¾Æ·¡·Î ¾È °¡°Ô
-    if (position.y < height / 2.0f) {
-        position.y = height / 2.0f;
-        velocity.y = 0;
+    // âœ… íšŒì „ ê°ë„ ê³„ì‚°
+    float rotMag = sqrt(rotation.x * rotation.x + rotation.z * rotation.z);
+    float tiltRatio = std::min(1.0f, rotMag / 90.0f);
 
-        // ¹Ù´Ú¿¡¼­ ¸¶Âû
-        velocity.x *= 0.9f;
-        velocity.z *= 0.9f;
+    float minY;
+    if (isStanding) {
+        minY = height / 2.0f;
+    }
+    else {
+        // âœ… ì“°ëŸ¬ì§„ í•€ì˜ ë°”ë‹¥ ë†’ì´ë¥¼ ë” ì •í™•í•˜ê²Œ ê³„ì‚°
+        // ì™„ì „íˆ ì“°ëŸ¬ì§€ë©´ (90ë„) í•€ì´ ì˜†ìœ¼ë¡œ ëˆ„ì›Œì•¼ í•¨
+        // ì´ë•Œ ë†’ì´ëŠ” í•€ì˜ ìµœëŒ€ ë°˜ì§€ë¦„
+        float maxRadius = 0.056f;  // GetProfilePointì—ì„œ ê°€ì¥ í° ê°’
+
+        // ê°ë„ì— ë”°ë¼ ì„ í˜• ë³´ê°„
+        // 0ë„ (ì„œìˆìŒ) â†’ height/2
+        // 90ë„ (ì™„ì „íˆ ì“°ëŸ¬ì§) â†’ maxRadius
+        minY = (1.0f - tiltRatio) * (height / 2.0f) + tiltRatio * maxRadius;
+
+        // âœ… ë„ˆë¬´ ë‚®ì•„ì§€ì§€ ì•Šë„ë¡ ìµœì†Œê°’ ë³´ì¥
+        if (minY < maxRadius * 0.8f) minY = maxRadius * 0.8f;
     }
 
-    // ¿ÏÀüÈ÷ ¾²·¯Áø »óÅÂ
+    if (position.y < minY) {
+        position.y = minY;
+
+        // âœ… ë°”ë‹¥ ë°˜ë°œ ê±°ì˜ ì—†ìŒ
+        if (velocity.y < -0.1f) {
+            velocity.y = -velocity.y * 0.08f;  // 0.10f â†’ 0.08f (ë” ì•½í•˜ê²Œ)
+        }
+        else {
+            velocity.y = 0;
+        }
+
+        // âœ… ë°”ë‹¥ ë§ˆì°° ê°•í™”
+        velocity.x *= 0.82f;  // 0.85f â†’ 0.82f
+        velocity.z *= 0.82f;
+        angularVelocity *= 0.78f;  // 0.82f â†’ 0.78f
+    }
+
+    // âœ… ì“°ëŸ¬ì§„ í›„ ì•ˆì •í™” (íšŒì „ì„ ë” ë¹¨ë¦¬ ë©ˆì¶¤)
     if (IsDown()) {
-        velocity = vec3(0.0f);
-        angularVelocity = vec3(0.0f);
+        if (length(velocity) < 0.12f) {
+            velocity *= 0.85f;  // 0.88f â†’ 0.85f
+            angularVelocity *= 0.75f;  // 0.80f â†’ 0.75f
+
+            if (length(velocity) < 0.05f) velocity = vec3(0.0f);
+            if (length(angularVelocity) < 0.05f) angularVelocity = vec3(0.0f);
+        }
+
+        // âœ… ì™„ì „íˆ ë©ˆì·„ì„ ë•Œ íšŒì „ë„ ìˆ˜í‰ì— ê°€ê¹ê²Œ ë³´ì •
+        if (length(velocity) < 0.02f && length(angularVelocity) < 0.02f) {
+            // íšŒì „ì„ 90ë„ì— ê°€ê¹ê²Œ ìŠ¤ëƒ… (ì˜†ìœ¼ë¡œ ì™„ì „íˆ ëˆ„ìš´ ìƒíƒœ)
+            if (abs(rotation.x) > 80.0f) {
+                rotation.x = (rotation.x > 0) ? 90.0f : -90.0f;
+            }
+            if (abs(rotation.z) > 80.0f) {
+                rotation.z = (rotation.z > 0) ? 90.0f : -90.0f;
+            }
+
+            velocity = vec3(0.0f);
+            angularVelocity = vec3(0.0f);
+        }
     }
 }
 
 bool Pin::IsDown() {
-    return !isStanding || abs(rotation.x) > 80.0f || abs(rotation.z) > 80.0f;
+    return !isStanding || abs(rotation.x) > 75.0f || abs(rotation.z) > 75.0f;
 }
 
 void Pin::Draw() {
+    // âœ… í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥: ì œê±°ëœ í•€ì€ ê·¸ë¦¬ì§€ ì•ŠìŒ
+    if (!inPlay) return;
+
+    if (!meshGenerated) GenerateRevolutionMesh();
+
     glPushMatrix();
 
     glTranslatef(position.x, position.y, position.z);
@@ -232,55 +580,45 @@ void Pin::Draw() {
     glRotatef(rotation.y, 0.0f, 1.0f, 0.0f);
     glRotatef(rotation.z, 0.0f, 0.0f, 1.0f);
 
-    // ÇÉ »ö»ó (Èò»ö + »¡°£ ÁÙ¹«´Ì)
-    GLfloat matWhite[] = { 0.95f, 0.95f, 0.95f, 1.0f };
-    GLfloat matRed[] = { 0.8f, 0.1f, 0.1f, 1.0f };
-    GLfloat matSpecular[] = { 0.5f, 0.5f, 0.5f, 1.0f };
-    GLfloat matShininess[] = { 50.0f };
+    const bool useTex = (textureLoaded && pinTextureID != 0);
 
-    glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
-    glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
+    if (useTex) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, pinTextureID);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-    // ÇÉ ¸öÅë (¿ø±âµÕ + ±¸·Î ±Ù»ç)
-    GLUquadric* quad = gluNewQuadric();
+        GLfloat matWhite[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+        GLfloat matSpecular[] = { 0.3f, 0.3f, 0.3f, 1.0f };
+        GLfloat matShininess[] = { 30.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matWhite);
+        glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
+        glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
-    // ¾Æ·¡ ºÎºĞ (±½Àº ¿ø±âµÕ)
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matWhite);
-    glPushMatrix();
-    glTranslatef(0.0f, -height / 2.0f + 0.02f, 0.0f);
-    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-    gluCylinder(quad, radius * 1.2f, radius, height * 0.3f, 16, 4);
-    glPopMatrix();
+        glDisable(GL_COLOR_MATERIAL);
+    }
+    else {
+        glDisable(GL_TEXTURE_2D);
+        glEnable(GL_COLOR_MATERIAL);
+    }
 
-    // Áß°£ ºÎºĞ (Á¼¾ÆÁö´Â)
-    glPushMatrix();
-    glTranslatef(0.0f, -height / 2.0f + height * 0.3f, 0.0f);
-    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-    gluCylinder(quad, radius, radius * 0.6f, height * 0.4f, 16, 4);
-    glPopMatrix();
+    glBegin(GL_TRIANGLES);
+    for (size_t i = 0; i < indices.size(); i++) {
+        Vertex& v = vertices[indices[i]];
+        glNormal3f(v.normal.x, v.normal.y, v.normal.z);
+        if (useTex) glTexCoord2f(v.texCoord.x, v.texCoord.y);
+        glVertex3f(v.position.x, v.position.y, v.position.z);
+    }
+    glEnd();
 
-    // ¸ñ ºÎºĞ (»¡°£ ÁÙ¹«´Ì)
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matRed);
-    glPushMatrix();
-    glTranslatef(0.0f, -height / 2.0f + height * 0.65f, 0.0f);
-    glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
-    gluCylinder(quad, radius * 0.6f, radius * 0.5f, height * 0.1f, 16, 2);
-    glPopMatrix();
-
-    // ¸Ó¸® ºÎºĞ
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matWhite);
-    glPushMatrix();
-    glTranslatef(0.0f, height / 2.0f - radius * 0.8f, 0.0f);
-    gluSphere(quad, radius * 0.7f, 16, 16);
-    glPopMatrix();
-
-    gluDeleteQuadric(quad);
+    if (useTex) {
+        glEnable(GL_COLOR_MATERIAL);
+        glDisable(GL_TEXTURE_2D);
+    }
 
     glPopMatrix();
 }
 
-// ============ PinManager ============
-
+// ========== PinManager ==========
 PinManager::PinManager() {
     ResetAll();
 }
@@ -288,16 +626,25 @@ PinManager::PinManager() {
 void PinManager::ResetAll() {
     for (int i = 0; i < 10; i++) {
         vec3 pos = PIN_POSITIONS[i];
-        pos.z += PIN_START_Z;  // ·¹ÀÎ ³¡ÂÊÀ¸·Î ÀÌµ¿
+        pos.z += PIN_START_Z;
         pins[i] = Pin(i + 1, pos);
     }
     standingCount = 10;
 }
 
+// âœ… â€œí„´ ì¢…ë£Œ ì •ë¦¬â€ í•¨ìˆ˜ë¡œ ë™ì‘í•˜ê²Œ ë³€ê²½:
+// - ì• ë‹ˆë©”ì´ì…˜ ë„ì¤‘ì—ëŠ” ê±´ë“œë¦¬ì§€ ë§ê³ 
+// - í”„ë ˆì„ì´ ì•„ë‹ˆë¼ â€œí„´ ë(ê³µ ë©ˆì¶”ê³  AllSettled=true)â€ ì‹œì ì— í˜¸ì¶œí•˜ëŠ” ê±¸ ê¶Œì¥
 void PinManager::RemoveFallenPins() {
-    // ¾²·¯Áø ÇÉÀº ±×´ë·Î µÎ°í, ¼­ÀÖ´Â ÇÉ¸¸ ¸®¼Â
     for (int i = 0; i < 10; i++) {
-        if (pins[i].isStanding && !pins[i].IsDown()) {
+        if (!pins[i].inPlay) continue;
+
+        // 3ë²ˆ ìš”êµ¬: ì„œìˆì§€ ì•Šìœ¼ë©´(ë˜ëŠ” IsDownì´ë©´) ì“°ëŸ¬ì§„ ê±¸ë¡œ ë³´ê³  ì œê±°
+        if (!pins[i].isStanding || pins[i].IsDown()) {
+            pins[i].inPlay = false;
+        }
+        else {
+            // ì„œìˆëŠ” í•€ì€ í”ë“¤ë¦¼ ì œê±°
             pins[i].velocity = vec3(0.0f);
             pins[i].angularVelocity = vec3(0.0f);
         }
@@ -312,15 +659,69 @@ void PinManager::Update(float dt) {
     standingCount = CountStanding();
 }
 
-void PinManager::CheckBallCollision(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity) {
+void PinManager::CheckBallCollision(vec3 ballPos, float ballRadius, vec3& ballVelocity, vec3 ballAngularVelocity) {
+    static bool seeded = false;
+    if (!seeded) {
+        srand((unsigned)time(nullptr));
+        seeded = true;
+    }
+
+    // âœ… í•©ì¹œ ì½”ë“œ ê¸°ëŠ¥: í¬ì¼“ ìŠ¤íŠ¸ë¼ì´í¬ í™•ë¥  15%
+    Pin& head = pins[0];
+    bool headUp = pins[0].inPlay && pins[0].isStanding;
+    bool pin2Up = pins[1].inPlay && pins[1].isStanding;
+    bool pin3Up = pins[2].inPlay && pins[2].isStanding;
+
+    if (headUp && (pin2Up || pin3Up)) {
+        float dz = fabsf(ballPos.z - head.position.z);
+        float zGate = (ballRadius + PIN_RADIUS) * 2.0f;
+        float pocketHalf = PIN_SPACING * 0.3f;
+        bool inPocketZone = (fabsf(ballPos.x) <= pocketHalf);
+
+        if (dz < zGate && inPocketZone) {
+            if ((rand() % 100) < 15) {
+                float base = length(ballVelocity);
+                float force = std::max(8.0f, base * 5.0f);
+
+                for (int i = 0; i < 10; i++) {
+                    if (!pins[i].inPlay) continue;
+                    if (!pins[i].isStanding) continue;
+
+                    pins[i].isStanding = false;
+                    pins[i].isFalling = true;
+
+                    vec3 dir = pins[i].position - ballPos;
+                    dir.y = 0.0f;
+                    if (length(dir) < 0.001f) {
+                        dir = vec3((rand() % 200 - 100) / 100.0f, 0.0f, -1.0f);
+                    }
+                    dir = normalize(dir);
+
+                    float jitter = 0.8f + (rand() % 25) / 100.0f;
+                    pins[i].velocity = dir * force * jitter * 0.5f;
+                    pins[i].velocity.y = force * 0.12f;
+
+                    pins[i].angularVelocity = vec3(
+                        dir.z * force * 0.8f,
+                        (float)(rand() % 40 - 20) / 20.0f,
+                        -dir.x * force * 0.8f
+                    );
+                }
+
+                ballVelocity *= 0.4f;
+                return;
+            }
+        }
+    }
+
     for (int i = 0; i < 10; i++) {
+        if (!pins[i].inPlay) continue;
         pins[i].CheckCollisionWithBall(ballPos, ballRadius, ballVelocity, ballAngularVelocity);
     }
 }
 
 void PinManager::CheckPinCollisions() {
-    // ¿©·¯ ¹ø ¹İº¹ÇØ¼­ ¿¬¼â Ãæµ¹ Ã³¸®
-    for (int iter = 0; iter < 3; iter++) {
+    for (int iter = 0; iter < 4; iter++) {
         for (int i = 0; i < 10; i++) {
             for (int j = i + 1; j < 10; j++) {
                 pins[i].CheckCollisionWithPin(pins[j]);
@@ -338,16 +739,16 @@ void PinManager::Draw() {
 int PinManager::CountStanding() {
     int count = 0;
     for (int i = 0; i < 10; i++) {
-        if (pins[i].isStanding && !pins[i].IsDown()) {
-            count++;
-        }
+        if (!pins[i].inPlay) continue;
+        if (pins[i].isStanding && !pins[i].IsDown()) count++;
     }
     return count;
 }
 
 bool PinManager::AllSettled() {
     for (int i = 0; i < 10; i++) {
-        if (length(pins[i].velocity) > 0.05f) {
+        if (!pins[i].inPlay) continue;
+        if (length(pins[i].velocity) > 0.08f || length(pins[i].angularVelocity) > 0.1f) {
             return false;
         }
     }

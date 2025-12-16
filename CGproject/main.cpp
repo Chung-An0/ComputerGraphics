@@ -1,26 +1,26 @@
 #include "Game.h"
 
 int main(int argc, char** argv) {
-    // GLUT ÃÊ±âÈ­
+    // GLUT ì´ˆê¸°í™”
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(WINDOW_WIDTH, WINDOW_HEIGHT);
     glutInitWindowPosition(100, 50);
     glutCreateWindow("Bowling Game - OpenGL");
-
-    // GLEW ÃÊ±âÈ­
+    
+    // GLEW ì´ˆê¸°í™”
     GLenum err = glewInit();
     if (err != GLEW_OK) {
         cerr << "GLEW Error: " << glewGetErrorString(err) << endl;
         return -1;
     }
-
-    //ÄÜ¼Ö ¸Þ½ÃÁö Ãß°¡ ¿¹Á¤
-
-    // °ÔÀÓ ÃÊ±âÈ­
+    
+    //ì½˜ì†” ë©”ì‹œì§€ ì¶”ê°€ ì˜ˆì •
+    
+    // ê²Œìž„ ì´ˆê¸°í™”
     Game::Instance().Init();
-
-    // ÄÝ¹é µî·Ï
+    
+    // ì½œë°± ë“±ë¡
     glutDisplayFunc(DisplayCallback);
     glutReshapeFunc(ReshapeCallback);
     glutKeyboardFunc(KeyboardCallback);
@@ -30,9 +30,9 @@ int main(int argc, char** argv) {
     glutMotionFunc(MotionCallback);
     glutPassiveMotionFunc(PassiveMotionCallback);
     glutTimerFunc(16, TimerCallback, 0);
-
-    // ¸ÞÀÎ ·çÇÁ
+    
+    // ë©”ì¸ ë£¨í”„
     glutMainLoop();
-
+    
     return 0;
 }

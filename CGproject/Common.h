@@ -2,85 +2,88 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
-// OpenGL °ü·Ã
+// OpenGL ê´€ë ¨
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
-// GLM ¼öÇÐ ¶óÀÌºê·¯¸®
+// GLM ìˆ˜í•™ ë¼ì´ë¸ŒëŸ¬ë¦¬
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-// Ç¥ÁØ ¶óÀÌºê·¯¸®
+// í‘œì¤€ ë¼ì´ë¸ŒëŸ¬ë¦¬
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <cmath>
 
-// ³×ÀÓ½ºÆäÀÌ½º
+// ë„¤ìž„ìŠ¤íŽ˜ì´ìŠ¤
 using namespace std;
 using namespace glm;
 
-// ========== °ÔÀÓ »ó¼ö ==========
+// ========== ê²Œìž„ ìƒìˆ˜ ==========
 
-// À©µµ¿ì Å©±â
+// ìœˆë„ìš° í¬ê¸°
 const int WINDOW_WIDTH = 1280;
 const int WINDOW_HEIGHT = 720;
 
-// º¼¸µ ·¹ÀÎ Å©±â (½ÇÁ¦ ºñÀ² ±âÁØ)
-const float LANE_LENGTH = 18.29f;    // ¾à 60ÇÇÆ®
-const float LANE_WIDTH = 1.05f;      // ¾à 41.5ÀÎÄ¡
-const float GUTTER_WIDTH = 0.15f;    // °ÅÅÍ Æø
-const float FOUL_LINE_Z = 0.0f;      // ÆÄ¿ï¶óÀÎ À§Ä¡
+// ë³¼ë§ ë ˆì¸ í¬ê¸° (ì‹¤ì œ ë¹„ìœ¨ ê¸°ì¤€)
+const float LANE_LENGTH = 18.29f;    // ì•½ 60í”¼íŠ¸
+const float LANE_WIDTH = 1.05f;      // ì•½ 41.5ì¸ì¹˜
+const float GUTTER_WIDTH = 0.15f;    // ê±°í„° í­
+const float FOUL_LINE_Z = 0.0f;      // íŒŒìš¸ë¼ì¸ ìœ„ì¹˜
 
-// ÇÉ °ü·Ã
-const float PIN_HEIGHT = 0.38f;      // ÇÉ ³ôÀÌ (¾à 15ÀÎÄ¡)
-const float PIN_RADIUS = 0.057f;     // ÇÉ ¹ÝÁö¸§
-const float PIN_START_Z = -LANE_LENGTH + 1.0f;  // ÇÉ ½ÃÀÛ À§Ä¡
-const float PIN_SPACING = 0.30f;     // ÇÉ °£°Ý
+// í•€ ê´€ë ¨
+const float PIN_HEIGHT = 0.38f;      // í•€ ë†’ì´ (ì•½ 15ì¸ì¹˜)
+const float PIN_RADIUS = 0.057f;     // í•€ ë°˜ì§€ë¦„
+const float PIN_START_Z = -LANE_LENGTH + 1.0f;  // í•€ ì‹œìž‘ ìœ„ì¹˜
+const float PIN_SPACING = 0.30f;     // í•€ ê°„ê²©
 
-// °ø °ü·Ã
-const float BALL_RADIUS = 0.11f;     // °ø ¹ÝÁö¸§ (¾à 8.5ÀÎÄ¡)
-const float BALL_MASS = 6.0f;        // °ø Áú·® (kg)
+// ê³µ ê´€ë ¨
+const float BALL_RADIUS = 0.11f;     // ê³µ ë°˜ì§€ë¦„ (ì•½ 8.5ì¸ì¹˜)
+const float BALL_MASS = 6.0f;        // ê³µ ì§ˆëŸ‰ (kg)
 
-// ¹°¸® »ó¼ö
+// ë¬¼ë¦¬ ìƒìˆ˜
 const float GRAVITY = -9.8f;
-const float FRICTION = 0.02f;        // ·¹ÀÎ ¸¶Âû
-const float RESTITUTION = 0.7f;      // ¹Ý¹ß °è¼ö
+const float FRICTION = 0.02f;        // ë ˆì¸ ë§ˆì°°
+const float RESTITUTION = 0.7f;      // ë°˜ë°œ ê³„ìˆ˜
 
-// °ÔÀÓ »óÅÂ
+// ê²Œìž„ ìƒíƒœ
 enum class GameState {
-    AIMING,         // Á¶ÁØ Áß (WASD·Î À§Ä¡ Á¶Á¤)
-    CHARGING,       // ÆÄ¿ö °ÔÀÌÁö Â÷´Â Áß
-    ROLLING,        // °ø ±¼·¯°¡´Â Áß
-    PIN_ACTION,     // ÇÉ ¾²·¯Áö´Â Áß
-    FRAME_END,      // ÇÁ·¹ÀÓ Á¾·á
-    GAME_OVER       // °ÔÀÓ Á¾·á
+    AIMING,         // ì¡°ì¤€ ì¤‘ (WASDë¡œ ìœ„ì¹˜ ì¡°ì •)
+    CHARGING,       // íŒŒì›Œ ê²Œì´ì§€ ì°¨ëŠ” ì¤‘
+    ROLLING,        // ê³µ êµ´ëŸ¬ê°€ëŠ” ì¤‘
+    PIN_ACTION,     // í•€ ì“°ëŸ¬ì§€ëŠ” ì¤‘
+    FRAME_END,      // í”„ë ˆìž„ ì¢…ë£Œ
+    GAME_OVER       // ê²Œìž„ ì¢…ë£Œ
 };
 
-// ½ºÇÉ Å¸ÀÔ
+// ìŠ¤í•€ íƒ€ìž…
 enum class SpinType {
-    STRAIGHT,       // Á÷±¸
-    LEFT_HOOK,      // ¿ÞÂÊ ½ºÇÉ
-    RIGHT_HOOK      // ¿À¸¥ÂÊ ½ºÇÉ
+    STRAIGHT,       // ì§êµ¬
+    LEFT_HOOK,      // ì™¼ìª½ ìŠ¤í•€
+    RIGHT_HOOK      // ì˜¤ë¥¸ìª½ ìŠ¤í•€
 };
 
-// Ä«¸Þ¶ó ¸ðµå
+// ì¹´ë©”ë¼ ëª¨ë“œ
 enum class CameraMode {
-    FIRST_PERSON,   // 1ÀÎÄª (ÇÃ·¹ÀÌ¾î ½ÃÁ¡)
-    BALL_FOLLOW     // °ø ÃßÀû
+    FIRST_PERSON,   // 1ì¸ì¹­ (í”Œë ˆì´ì–´ ì‹œì )
+    BALL_FOLLOW,    // ê³µ ì¶”ì 
+    TOP_VIEW,       // ìœ„ì—ì„œ ë‚´ë ¤ë‹¤ë³´ëŠ” ì‹œì 
+    SIDE_VIEW       // ì¸¡ë©´ì—ì„œ ë³´ëŠ” ì‹œì 
 };
 
-// [Ãß°¡] ±×¸²ÀÚ Çà·Ä »ý¼º ÇÔ¼ö (Planar Projected Shadow)
-// - lightPos: ±¤¿øÀÇ À§Ä¡ (x, y, z, w). w=1ÀÌ¸é Á¡±¤¿ø
-// - plane: ±×¸²ÀÚ°¡ ¸ÎÈú Æò¸éÀÇ ¹æÁ¤½Ä (ax + by + cz + d = 0)
+// [ì¶”ê°€] ê·¸ë¦¼ìž í–‰ë ¬ ìƒì„± í•¨ìˆ˜ (Planar Projected Shadow)
+// - lightPos: ê´‘ì›ì˜ ìœ„ì¹˜ (x, y, z, w). w=1ì´ë©´ ì ê´‘ì›
+// - plane: ê·¸ë¦¼ìžê°€ ë§ºíž í‰ë©´ì˜ ë°©ì •ì‹ (ax + by + cz + d = 0)
 inline void MakeShadowMatrix(GLfloat* matrix, glm::vec4 lightPos, glm::vec4 plane) {
     GLfloat dot;
 
-    // Æò¸é ¹ý¼±°ú ±¤¿ø À§Ä¡ÀÇ ³»Àû °è»ê
+    // í‰ë©´ ë²•ì„ ê³¼ ê´‘ì› ìœ„ì¹˜ì˜ ë‚´ì  ê³„ì‚°
     dot = plane.x * lightPos.x + plane.y * lightPos.y + plane.z * lightPos.z + plane.w * lightPos.w;
 
-    // ±×¸²ÀÚ Åõ¿µ Çà·Ä °è»ê °ø½Ä (Shadow Matrix)
+    // ê·¸ë¦¼ìž íˆ¬ì˜ í–‰ë ¬ ê³„ì‚° ê³µì‹ (Shadow Matrix)
     matrix[0] = dot - lightPos.x * plane.x;
     matrix[4] = -lightPos.x * plane.y;
     matrix[8] = -lightPos.x * plane.z;

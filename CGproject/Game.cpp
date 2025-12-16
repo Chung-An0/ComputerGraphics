@@ -1,12 +1,283 @@
 #include "Game.h"
+#include "Texture.h"
+#include "Ball.h"
+#include "Pin.h"
 
+// =============================================================
+// B-lite Picking (Screen -> World)
+// =============================================================
+
+struct _Vec4d { double x, y, z, w; };
+
+static _Vec4d _MulMat4Vec4(const double m[16], const _Vec4d& v) {
+    _Vec4d r;
+    r.x = m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w;
+    r.y = m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w;
+    r.z = m[2] * v.x + m[6] * v.y + m[10] * v.z + m[14] * v.w;
+    r.w = m[3] * v.x + m[7] * v.y + m[11] * v.z + m[15] * v.w;
+    return r;
+}
+
+static bool _InvertMat4(const double m[16], double invOut[16]) {
+    double inv[16];
+
+    inv[0] = m[5] * m[10] * m[15] -
+        m[5] * m[11] * m[14] -
+        m[9] * m[6] * m[15] +
+        m[9] * m[7] * m[14] +
+        m[13] * m[6] * m[11] -
+        m[13] * m[7] * m[10];
+
+    inv[4] = -m[4] * m[10] * m[15] +
+        m[4] * m[11] * m[14] +
+        m[8] * m[6] * m[15] -
+        m[8] * m[7] * m[14] -
+        m[12] * m[6] * m[11] +
+        m[12] * m[7] * m[10];
+
+    inv[8] = m[4] * m[9] * m[15] -
+        m[4] * m[11] * m[13] -
+        m[8] * m[5] * m[15] +
+        m[8] * m[7] * m[13] +
+        m[12] * m[5] * m[11] -
+        m[12] * m[7] * m[9];
+
+    inv[12] = -m[4] * m[9] * m[14] +
+        m[4] * m[10] * m[13] +
+        m[8] * m[5] * m[14] -
+        m[8] * m[6] * m[13] -
+        m[12] * m[5] * m[10] +
+        m[12] * m[6] * m[9];
+
+    inv[1] = -m[1] * m[10] * m[15] +
+        m[1] * m[11] * m[14] +
+        m[9] * m[2] * m[15] -
+        m[9] * m[3] * m[14] -
+        m[13] * m[2] * m[11] +
+        m[13] * m[3] * m[10];
+
+    inv[5] = m[0] * m[10] * m[15] -
+        m[0] * m[11] * m[14] -
+        m[8] * m[2] * m[15] +
+        m[8] * m[3] * m[14] +
+        m[12] * m[2] * m[11] -
+        m[12] * m[3] * m[10];
+
+    inv[9] = -m[0] * m[9] * m[15] +
+        m[0] * m[11] * m[13] +
+        m[8] * m[1] * m[15] -
+        m[8] * m[3] * m[13] -
+        m[12] * m[1] * m[11] +
+        m[12] * m[3] * m[9];
+
+    inv[13] = m[0] * m[9] * m[14] -
+        m[0] * m[10] * m[13] -
+        m[8] * m[1] * m[14] +
+        m[8] * m[2] * m[13] +
+        m[12] * m[1] * m[10] -
+        m[12] * m[2] * m[9];
+
+    inv[2] = m[1] * m[6] * m[15] -
+        m[1] * m[7] * m[14] -
+        m[5] * m[2] * m[15] +
+        m[5] * m[3] * m[14] +
+        m[13] * m[2] * m[7] -
+        m[13] * m[3] * m[6];
+
+    inv[6] = -m[0] * m[6] * m[15] +
+        m[0] * m[7] * m[14] +
+        m[4] * m[2] * m[15] -
+        m[4] * m[3] * m[14] -
+        m[12] * m[2] * m[7] +
+        m[12] * m[3] * m[6];
+
+    inv[10] = m[0] * m[5] * m[15] -
+        m[0] * m[7] * m[13] -
+        m[4] * m[1] * m[15] +
+        m[4] * m[3] * m[13] +
+        m[12] * m[1] * m[7] -
+        m[12] * m[3] * m[5];
+
+    inv[14] = -m[0] * m[5] * m[14] +
+        m[0] * m[6] * m[13] +
+        m[4] * m[1] * m[14] -
+        m[4] * m[2] * m[13] -
+        m[12] * m[1] * m[6] +
+        m[12] * m[2] * m[5];
+
+    inv[3] = -m[1] * m[6] * m[11] +
+        m[1] * m[7] * m[10] +
+        m[5] * m[2] * m[11] -
+        m[5] * m[3] * m[10] -
+        m[9] * m[2] * m[7] +
+        m[9] * m[3] * m[6];
+
+    inv[7] = m[0] * m[6] * m[11] -
+        m[0] * m[7] * m[10] -
+        m[4] * m[2] * m[11] +
+        m[4] * m[3] * m[10] +
+        m[8] * m[2] * m[7] -
+        m[8] * m[3] * m[6];
+
+    inv[11] = -m[0] * m[5] * m[11] +
+        m[0] * m[7] * m[9] +
+        m[4] * m[1] * m[11] -
+        m[4] * m[3] * m[9] -
+        m[8] * m[1] * m[7] +
+        m[8] * m[3] * m[5];
+
+    inv[15] = m[0] * m[5] * m[10] -
+        m[0] * m[6] * m[9] -
+        m[4] * m[1] * m[10] +
+        m[4] * m[2] * m[9] +
+        m[8] * m[1] * m[6] -
+        m[8] * m[2] * m[5];
+
+    double det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+    if (fabs(det) < 1e-12) return false;
+
+    det = 1.0 / det;
+    for (int i = 0; i < 16; i++) invOut[i] = inv[i] * det;
+    return true;
+}
+
+static bool _UnProjectManual(
+    double winX, double winY, double winZ,
+    const double model[16], const double proj[16], const int viewport[4],
+    double& outX, double& outY, double& outZ
+) {
+    double x = (winX - viewport[0]) / (double)viewport[2] * 2.0 - 1.0;
+    double y = (winY - viewport[1]) / (double)viewport[3] * 2.0 - 1.0;
+    double z = winZ * 2.0 - 1.0;
+
+    double pm[16];
+    for (int c = 0; c < 4; c++) {
+        for (int r = 0; r < 4; r++) {
+            pm[c * 4 + r] =
+                proj[0 * 4 + r] * model[c * 4 + 0] +
+                proj[1 * 4 + r] * model[c * 4 + 1] +
+                proj[2 * 4 + r] * model[c * 4 + 2] +
+                proj[3 * 4 + r] * model[c * 4 + 3];
+        }
+    }
+
+    double invPM[16];
+    if (!_InvertMat4(pm, invPM)) return false;
+
+    _Vec4d in{ x, y, z, 1.0 };
+    _Vec4d out = _MulMat4Vec4(invPM, in);
+    if (fabs(out.w) < 1e-12) return false;
+
+    outX = out.x / out.w;
+    outY = out.y / out.w;
+    outZ = out.z / out.w;
+    return true;
+}
+
+static bool _PickLanePoint(
+    int mouseX, int mouseY,
+    double yPlane,
+    Camera& camera,
+    double& hitX, double& hitY, double& hitZ
+) {
+    int viewport[4];
+    double proj[16], model[16];
+
+    glGetIntegerv(GL_VIEWPORT, viewport);
+
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluPerspective(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f);
+    glGetDoublev(GL_PROJECTION_MATRIX, proj);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+    camera.Apply();
+    glGetDoublev(GL_MODELVIEW_MATRIX, model);
+
+    double winX = (double)mouseX;
+    double winY = (double)(viewport[3] - mouseY);
+
+    double nx, ny, nz;
+    double fx, fy, fz;
+    bool okN = _UnProjectManual(winX, winY, 0.0, model, proj, viewport, nx, ny, nz);
+    bool okF = _UnProjectManual(winX, winY, 1.0, model, proj, viewport, fx, fy, fz);
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
+
+    if (!okN || !okF) return false;
+
+    double ox = nx, oy = ny, oz = nz;
+    double dx = fx - nx, dy = fy - ny, dz = fz - nz;
+    if (fabs(dy) < 1e-9) return false;
+
+    double t = (yPlane - oy) / dy;
+    if (t < 0.0) return false;
+
+    hitX = ox + t * dx;
+    hitY = oy + t * dy;
+    hitZ = oz + t * dz;
+    return true;
+}
+
+static void _DrawAimGuideLine(float startX, float startZ, SpinType spin) {
+    const float PI = 3.14159265f;
+
+    float safeHalf = (LANE_WIDTH * 0.5f) - BALL_RADIUS - 0.02f;
+    if (safeHalf < 0.05f) safeHalf = 0.05f;
+
+    float amp = safeHalf * 0.85f;
+    float sign = 0.0f;
+    if (spin == SpinType::LEFT_HOOK) sign = +1.0f;
+    if (spin == SpinType::RIGHT_HOOK) sign = -1.0f;
+    float pathAmp = sign * amp;
+
+    GLboolean lightWas = glIsEnabled(GL_LIGHTING);
+    GLboolean texWas = glIsEnabled(GL_TEXTURE_2D);
+
+    if (lightWas) glDisable(GL_LIGHTING);
+    if (texWas)   glDisable(GL_TEXTURE_2D);
+
+    glLineWidth(2.5f);
+    glEnable(GL_LINE_STIPPLE);
+    glLineStipple(1, 0x00FF);
+
+    if (spin == SpinType::STRAIGHT) glColor3f(0.9f, 0.9f, 0.9f);
+    else if (spin == SpinType::LEFT_HOOK) glColor3f(0.2f, 0.9f, 1.0f);
+    else glColor3f(1.0f, 0.4f, 0.9f);
+
+    glBegin(GL_LINE_STRIP);
+    const int N = 44;
+    float y = BALL_RADIUS + 0.004f;
+
+    for (int i = 0; i <= N; i++) {
+        float t = (float)i / (float)N;
+        float x = startX + pathAmp * sinf(PI * t);
+        float z = (1.0f - t) * startZ + t * PIN_START_Z;
+        glVertex3f(x, y, z);
+    }
+    glEnd();
+
+    glDisable(GL_LINE_STIPPLE);
+
+    if (texWas)   glEnable(GL_TEXTURE_2D);
+    if (lightWas) glEnable(GL_LIGHTING);
+}
+
+// =============================================================
+// Game
+// =============================================================
 Game& Game::Instance() {
     static Game instance;
     return instance;
 }
 
 void Game::Init() {
-    // »óÅÂ ÃÊ±âÈ­
     state = GameState::AIMING;
     deltaTime = 0.0f;
     lastTime = glutGet(GLUT_ELAPSED_TIME);
@@ -22,14 +293,14 @@ void Game::Init() {
         keys[i] = false;
     }
 
-    // ¿ÀºêÁ§Æ® ÃÊ±âÈ­
     lane.Init();
+    Ball::LoadTextures();
+    Pin::InitTexture("texture/pin_texture.bmp");
     pins.ResetAll();
     ball.Reset(0.0f);
     ui.Reset();
     camera.SetMode(CameraMode::FIRST_PERSON);
 
-    // OpenGL ¼³Á¤
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -39,7 +310,6 @@ void Game::Init() {
     glShadeModel(GL_SMOOTH);
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
-    // ¾È°³ È¿°ú (ºÐÀ§±â¿ë)
     glEnable(GL_FOG);
     GLfloat fogColor[] = { 0.1f, 0.1f, 0.15f, 1.0f };
     glFogfv(GL_FOG_COLOR, fogColor);
@@ -51,7 +321,6 @@ void Game::Init() {
 void Game::Update() {
     CalculateDeltaTime();
 
-    // ¸Þ½ÃÁö Å¸ÀÌ¸Ó ¾÷µ¥ÀÌÆ®
     if (messageTimer > 0) {
         messageTimer -= deltaTime;
         if (messageTimer <= 0) {
@@ -60,7 +329,6 @@ void Game::Update() {
         }
     }
 
-    // »óÅÂº° ¾÷µ¥ÀÌÆ®
     switch (state) {
     case GameState::AIMING:
         UpdateAiming();
@@ -78,8 +346,21 @@ void Game::Update() {
         UpdateFrameEnd();
         break;
     case GameState::GAME_OVER:
-        // ´ë±â
         break;
+    }
+
+    // PIN_ACTIONê³¼ FRAME_END ìƒíƒœì—ì„œëŠ” ì¹´ë©”ë¼ ìžë™ ì—…ë°ì´íŠ¸ ì•ˆ í•¨
+    if (state != GameState::PIN_ACTION && state != GameState::FRAME_END) {
+        if (camera.mode == CameraMode::BALL_FOLLOW) {
+            vec3 dir = (length(ball.velocity) > 0.1f) ? normalize(ball.velocity) : vec3(0.0f, 0.0f, -1.0f);
+            camera.UpdateBallFollow(ball.position, dir);
+        }
+        else if (camera.mode == CameraMode::TOP_VIEW) {
+            camera.UpdateTopView(ball.position);
+        }
+        else if (camera.mode == CameraMode::SIDE_VIEW) {
+            camera.UpdateSideView(ball.position);
+        }
     }
 
     glutPostRedisplay();
@@ -88,10 +369,8 @@ void Game::Update() {
 void Game::Render() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Ä«¸Þ¶ó pitch¸¦ UI¿¡ Àü´Þ (ÃµÀå Á¡¼öÆÇ °¡½Ã¼º)
     ui.SetCameraPitch(camera.pitch);
 
-    // 3D ºä ¼³Á¤
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(60.0f, (float)WINDOW_WIDTH / WINDOW_HEIGHT, 0.1f, 100.0f);
@@ -99,18 +378,22 @@ void Game::Render() {
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Ä«¸Þ¶ó Àû¿ë
     camera.Apply();
 
-    // 3D ¿ÀºêÁ§Æ® ·»´õ¸µ
-    // 1. ·¹ÀÎ(¹Ù´Ú)À» °¡Àå ¸ÕÀú ±×¸³´Ï´Ù.
+    // 3D ì˜¤ë¸Œì íŠ¸ ë Œë”ë§
+    // 1. ë ˆì¸(ë°”ë‹¥)ê³¼ í•€ì„ ë¨¼ì € ê·¸ë¦°ë‹¤
     lane.Draw();
     pins.Draw();
 
-    // ÃµÀå Á¡¼öÆÇ (3D)
+    // ì¡°ì¤€/íŒŒì›Œ ë‹¨ê³„ì—ì„œë§Œ ê°€ì´ë“œ ë¼ì¸
+    if (!ui.menuOpen && (state == GameState::AIMING || state == GameState::CHARGING)) {
+        _DrawAimGuideLine(camera.playerX, ball.position.z, ui.selectedSpin);
+    }
+
+    // ì²œìž¥ ì ìˆ˜íŒ (3D)
     ui.DrawScoreboard3D();
 
-    // °ø Ç¥½Ã ¿©ºÎ È®ÀÎ
+    // ê³µ í‘œì‹œ ì¡°ê±´ í™•ì¸
     bool showBall = false;
     if (state != GameState::PIN_ACTION && state != GameState::FRAME_END) {
         showBall = true;
@@ -120,15 +403,14 @@ void Game::Render() {
     }
 
     if (showBall) {
-        // [Ãß°¡] 2. ±×¸²ÀÚ¸¦ ¸ÕÀú ±×¸³´Ï´Ù. (¹Ù´Ú À§¿¡ µ¤¾î¾º¿ò)
-        // Lane °´Ã¼°¡ °¡Áø Á¶¸í À§Ä¡¸¦ °¡Á®¿Í¼­ Àü´ÞÇÕ´Ï´Ù.
+        // [2ë²ˆ ì¶”ê°€] 2. ê·¸ë¦¼ìžë¥¼ ë¨¼ì € ê·¸ë¦°ë‹¤ (ë°”ë‹¥ ìœ„ì— ë Œë”ë§)
         ball.DrawShadow(lane.lightPosition);
 
-        // [±âÁ¸] 3. ÁøÂ¥ °øÀ» ±×¸³´Ï´Ù. (±×¸²ÀÚ À§¿¡ µ¤¾î¾º¿ò)
+        // [ê¸°ë³¸] 3. ì§„ì§œ ê³µì„ ê·¸ë¦°ë‹¤ (ê·¸ë¦¼ìž ìœ„ì— ë Œë”ë§)
         ball.Draw();
     }
 
-    // UI ·»´õ¸µ
+    // UI ë Œë”ë§
     ui.Draw();
     ui.DrawGameState(state);
     ui.DrawStrikeSpare(showStrike, showSpare);
@@ -152,16 +434,12 @@ void Game::SetState(GameState newState) {
 }
 
 void Game::UpdateAiming() {
-    // Å° ÀÔ·Â¿¡ µû¸¥ ÀÌµ¿
     float moveSpeed = 1.0f * deltaTime;
     float lookSpeed = 30.0f * deltaTime;
 
-    if (keys['w'] || keys['W']) {
-        camera.LookUp(lookSpeed);
-    }
-    if (keys['s'] || keys['S']) {
-        camera.LookDown(lookSpeed);
-    }
+    if (keys['w'] || keys['W']) camera.LookUp(lookSpeed);
+    if (keys['s'] || keys['S']) camera.LookDown(lookSpeed);
+
     if (keys['a'] || keys['A']) {
         camera.MoveLeft(moveSpeed);
         ball.position.x = camera.playerX;
@@ -177,37 +455,41 @@ void Game::UpdateCharging() {
 }
 
 void Game::UpdateRolling() {
-    // °ø ¹°¸® ¾÷µ¥ÀÌÆ®
     ball.Update(deltaTime);
 
-    // Ä«¸Þ¶ó°¡ °ø µû¶ó°¡±â
     camera.UpdateBallFollow(ball.position,
         length(ball.velocity) > 0.1f ? normalize(ball.velocity) : vec3(0, 0, -1));
 
-    // ÇÉ Ãæµ¹ Ã¼Å©
     pins.CheckBallCollision(ball.position, ball.radius, ball.velocity, ball.angularVelocity);
 
-    // °øÀÌ ÇÉ ¿µ¿ª Áö³ª°Å³ª ¸ØÃß¸é
     if (ball.position.z < PIN_START_Z - 2.0f || ball.IsStopped() || ball.isInGutter) {
         SetState(GameState::PIN_ACTION);
-        pinSettleTimer = 2.0f;  // ÇÉÀÌ ¾ÈÁ¤µÉ ¶§±îÁö 2ÃÊ ´ë±â
+        pinSettleTimer = 2.0f;
     }
 }
 
 void Game::UpdatePinAction() {
-    // ÇÉ ¹°¸® ¾÷µ¥ÀÌÆ®
     pins.Update(deltaTime);
 
-    // °øµµ °è¼Ó ±¼·¯°¡°Ô
     if (ball.isRolling) {
         ball.Update(deltaTime);
     }
 
+    // [2ë²ˆ ì¶”ê°€] PIN_ACTION ìƒíƒœì—ì„œëŠ” ì¹´ë©”ë¼ë¥¼ í•€ êµ¬ì—­ì— ê³ ì •
+    if (camera.mode == CameraMode::BALL_FOLLOW) {
+        vec3 pinCenter = vec3(0.0f, 0.0f, PIN_START_Z - 1.5f);
+        vec3 cameraPos = vec3(0.0f, 2.5f, PIN_START_Z + 3.0f);
+
+        camera.position = cameraPos;
+
+        vec3 dir = normalize(pinCenter - cameraPos);
+        camera.pitch = degrees(asin(dir.y));
+        camera.yaw = degrees(atan2(dir.x, -dir.z)) - 90.0f;
+    }
+
     pinSettleTimer -= deltaTime;
 
-    // ÇÉÀÌ ´Ù ¾ÈÁ¤µÇ°Å³ª Å¸ÀÌ¸Ó Á¾·á
     if (pinSettleTimer <= 0 || pins.AllSettled()) {
-        // ¾²·¯Áø ÇÉ ¼ö °è»ê
         int standingNow = pins.CountStanding();
         int knockedDown = 0;
 
@@ -215,24 +497,19 @@ void Game::UpdatePinAction() {
             knockedDown = 10 - standingNow;
         }
         else {
-            // 2Åõ±¸: ÀÌÀü¿¡ ¼­ÀÖ´ø ÇÉ - ÇöÀç ¼­ÀÖ´Â ÇÉ
             int prevStanding = 10 - ui.frames[ui.currentFrame].firstThrow;
             knockedDown = prevStanding - standingNow;
         }
 
         pinsKnockedThisThrow = knockedDown;
 
-        // Á¡¼ö ±â·Ï
         ui.RecordThrow(knockedDown);
 
-        // ½ºÆ®¶óÀÌÅ©/½ºÆä¾î Ã¼Å©
         if (ui.currentThrow == 1 && knockedDown == 10) {
-            // ÀÌ¹Ì ´ÙÀ½ ÇÁ·¹ÀÓÀ¸·Î ³Ñ¾î°¬À¸¹Ç·Î ÀÌÀü ÇÁ·¹ÀÓ È®ÀÎ
             showStrike = true;
             messageTimer = 2.0f;
         }
         else if (ui.currentThrow == 1 && ui.currentFrame > 0) {
-            // ½ºÆä¾î Ã¼Å© (ÀÌÀü ÇÁ·¹ÀÓ)
             if (ui.frames[ui.currentFrame - 1].isSpare) {
                 showSpare = true;
                 messageTimer = 2.0f;
@@ -248,13 +525,10 @@ void Game::UpdateFrameEnd() {
     transitionTimer -= deltaTime;
 
     if (transitionTimer <= 0) {
-        // °ÔÀÓ Á¾·á Ã¼Å©
         if (ui.currentFrame >= 10) {
-            SetState(GameState::GAME_OVER);
+            ResetGame();
             return;
         }
-
-        // ´ÙÀ½ Åõ±¸ ÁØºñ
         NextThrow();
     }
 }
@@ -263,13 +537,7 @@ void Game::OnKeyDown(unsigned char key) {
     keys[key] = true;
 
     switch (key) {
-    case 9: // [Ãß°¡] TAB Å° (ASCII 9) : ¸Þ´º Ä«Å×°í¸® º¯°æ
-        if (ui.menuOpen) {
-            ui.NextCategory();
-        }
-        break;
-
-    case ' ':  // SPACE: ÆÄ¿ö °ÔÀÌÁö
+    case ' ':
         if (state == GameState::AIMING && !spacePressed) {
             spacePressed = true;
             ui.StartCharging();
@@ -278,13 +546,18 @@ void Game::OnKeyDown(unsigned char key) {
         break;
 
     case 'm':
-    case 'M':  // ¸Þ´º Åä±Û
-        if (state == GameState::AIMING) {
-            ui.ToggleMenu();
+    case 'M':
+        if (state == GameState::AIMING) ui.ToggleMenu();
+        break;
+
+    case 'q':
+    case 'Q':
+        if (ui.menuOpen) {
+            ui.NextCategory();
         }
         break;
 
-    case '1':  // °ø ¼±ÅÃ ´ÜÃàÅ° (¸Þ´º ¾øÀÌµµ °¡´É)
+    case '1':
         ui.selectedBall = 0;
         ui.previewBall = 0;
         ball.SetBallType(0);
@@ -299,28 +572,67 @@ void Game::OnKeyDown(unsigned char key) {
         ui.previewBall = 2;
         ball.SetBallType(2);
         break;
+
     case 'r':
-    case 'R':  // ¸®¼Â
+    case 'R':
         if (state == GameState::GAME_OVER) {
             ResetGame();
         }
         break;
 
-    case 13:  // [¼öÁ¤] EnterÅ° - ¼±ÅÃ È®Á¤ (°ø + ÅØ½ºÃ³)
+    case 13:  // Enter
         if (ui.menuOpen) {
-            ui.SelectItem(); // SelectBall -> SelectItemÀ¸·Î º¯°æµÊ
+            ui.SelectItem();
         }
         break;
 
-    case 27:  // ESC: Á¾·á
+    case 27:
         exit(0);
+        break;
+
+    case 'c':
+    case 'C':
+        if (camera.mode == CameraMode::FIRST_PERSON) {
+            camera.SetMode(CameraMode::BALL_FOLLOW);
+        }
+        else if (camera.mode == CameraMode::BALL_FOLLOW) {
+            camera.SetMode(CameraMode::TOP_VIEW);
+        }
+        else if (camera.mode == CameraMode::TOP_VIEW) {
+            camera.SetMode(CameraMode::SIDE_VIEW);
+        }
+        else {
+            camera.SetMode(CameraMode::FIRST_PERSON);
+        }
         break;
     }
 }
 
-void Game::OnMouse(int button, int state, int x, int y) {
-    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+void Game::OnMouse(int button, int st, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && st == GLUT_DOWN) {
         ui.OnMouseClick(x, y);
+
+        int yFlip = WINDOW_HEIGHT - y;
+        bool onSpinUI = false;
+        for (int i = 0; i < 3; i++) {
+            if (ui.IsPointInButton(x, yFlip, ui.spinButtons[i])) {
+                onSpinUI = true;
+                break;
+            }
+        }
+
+        if (!onSpinUI && this->state == GameState::AIMING && !ui.menuOpen) {
+            double hx, hy, hz;
+            if (_PickLanePoint(x, y, (double)BALL_RADIUS, camera, hx, hy, hz)) {
+                float limit = LANE_WIDTH / 2.0f - BALL_RADIUS;
+                float nx = (float)hx;
+                if (nx < -limit) nx = -limit;
+                if (nx > limit) nx = limit;
+
+                camera.playerX = nx;
+                ball.position.x = nx;
+            }
+        }
     }
 }
 
@@ -334,9 +646,8 @@ void Game::OnKeyUp(unsigned char key) {
     if (key == ' ' && state == GameState::CHARGING) {
         spacePressed = false;
 
-        // °ø ¹ß»ç!
         float power = ui.StopCharging();
-        if (power < 0.1f) power = 0.1f;  // ÃÖ¼Ò ÆÄ¿ö
+        if (power < 0.1f) power = 0.1f;
 
         ball.Launch(power, ui.selectedSpin);
         SetState(GameState::ROLLING);
@@ -344,7 +655,6 @@ void Game::OnKeyUp(unsigned char key) {
 }
 
 void Game::OnSpecialKey(int key) {
-    // ¸Þ´º¿¡¼­ ¹æÇâÅ° Ã³¸®
     if (ui.menuOpen) {
         switch (key) {
         case GLUT_KEY_LEFT:
@@ -353,15 +663,12 @@ void Game::OnSpecialKey(int key) {
         case GLUT_KEY_RIGHT:
             ui.MenuRight();
             break;
-            // »óÇÏ Å°´Â TabÀ¸·Î ´ëÃ¼µÇ¾úÀ¸¹Ç·Î Á¦°ÅµÊ
         }
     }
 }
 
 void Game::NextThrow() {
-    // ½ºÆ®¶óÀÌÅ©¿´À¸¸é ÇÉ ¸®¼Â
     if (ui.currentThrow == 1) {
-        // »õ ÇÁ·¹ÀÓ ½ÃÀÛ
         pins.ResetAll();
     }
 
@@ -375,6 +682,9 @@ void Game::ResetForThrow() {
     camera.pitch = -5.0f;
 }
 
+void Game::NextFrame() {
+}
+
 void Game::ResetGame() {
     ui.Reset();
     pins.ResetAll();
@@ -383,6 +693,8 @@ void Game::ResetGame() {
     camera.SetMode(CameraMode::FIRST_PERSON);
     showStrike = false;
     showSpare = false;
+    messageTimer = 0.0f;
+    spacePressed = false;
     SetState(GameState::AIMING);
 }
 
@@ -391,11 +703,10 @@ void Game::CalculateDeltaTime() {
     deltaTime = (currentTime - lastTime) / 1000.0f;
     lastTime = currentTime;
 
-    // ³Ê¹« Å« µ¨Å¸Å¸ÀÓ ¹æÁö
     if (deltaTime > 0.1f) deltaTime = 0.1f;
 }
 
-// ============ ÄÝ¹é ÇÔ¼öµé ============
+// ============ ì½œë°± í•¨ìˆ˜ë“¤ ============
 
 void DisplayCallback() {
     Game::Instance().Render();
@@ -417,8 +728,8 @@ void SpecialCallback(int key, int x, int y) {
     Game::Instance().OnSpecialKey(key);
 }
 
-void MouseCallback(int button, int state, int x, int y) {
-    Game::Instance().OnMouse(button, state, x, y);
+void MouseCallback(int button, int st, int x, int y) {
+    Game::Instance().OnMouse(button, st, x, y);
 }
 
 void MotionCallback(int x, int y) {
@@ -431,5 +742,5 @@ void PassiveMotionCallback(int x, int y) {
 
 void TimerCallback(int value) {
     Game::Instance().Update();
-    glutTimerFunc(16, TimerCallback, 0);  // ~60 FPS
+    glutTimerFunc(16, TimerCallback, 0);
 }

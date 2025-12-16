@@ -8,39 +8,39 @@
 
 class Game {
 public:
-    // °ÔÀÓ »óÅÂ
+    // ê²Œì„ ìƒíƒœ
     GameState state;
 
-    // °ÔÀÓ ¿ÀºêÁ§Æ®
+    // ê²Œì„ ì˜¤ë¸Œì íŠ¸
     Camera camera;
     Ball ball;
     PinManager pins;
     Lane lane;
     UI ui;
 
-    // Å¸ÀÌ¸Ó
+    // íƒ€ì´ë¨¸
     float deltaTime;
     int lastTime;
-    float pinSettleTimer;       // ÇÉ ¾ÈÁ¤È­ ´ë±â ½Ã°£
-    float transitionTimer;      // »óÅÂ ÀüÈ¯ ´ë±â ½Ã°£
+    float pinSettleTimer;       // í•€ ì•ˆì •í™” ëŒ€ê¸° ì‹œê°„
+    float transitionTimer;      // ìƒíƒœ ì „í™˜ ëŒ€ê¸° ì‹œê°„
 
-    // Åõ±¸ °á°ú
+    // íˆ¬êµ¬ ê²°ê³¼
     int pinsKnockedThisThrow;
     bool showStrike;
     bool showSpare;
     float messageTimer;
 
-    // ½Ì±ÛÅæ
+    // ì‹±ê¸€í†¤
     static Game& Instance();
 
-    // ÃÊ±âÈ­
+    // ì´ˆê¸°í™”
     void Init();
 
-    // °ÔÀÓ ·çÇÁ
+    // ê²Œì„ ë£¨í”„
     void Update();
     void Render();
 
-    // »óÅÂ °ü¸®
+    // ìƒíƒœ ê´€ë¦¬
     void SetState(GameState newState);
     void UpdateAiming();
     void UpdateCharging();
@@ -48,29 +48,29 @@ public:
     void UpdatePinAction();
     void UpdateFrameEnd();
 
-    // ÀÔ·Â Ã³¸®
+    // ì…ë ¥ ì²˜ë¦¬
     void OnKeyDown(unsigned char key);
     void OnKeyUp(unsigned char key);
     void OnSpecialKey(int key);
     void OnMouse(int button, int state, int x, int y);
     void OnMouseMove(int x, int y);
 
-    // ÇÁ·¹ÀÓ °ü¸®
+    // í”„ë ˆì„ ê´€ë¦¬
     void NextThrow();
-    void NextFrame();
+    void NextFrame();           // ì¸í„°í˜ì´ìŠ¤ í˜¸í™˜ìš©
     void ResetForThrow();
     void ResetGame();
 
-    // À¯Æ¿¸®Æ¼
+    // ìœ í‹¸ë¦¬í‹°
     void CalculateDeltaTime();
 
 private:
     Game() {}
-    bool keys[256];             // Å° »óÅÂ
+    bool keys[256];             // í‚¤ ìƒíƒœ
     bool spacePressed;
 };
 
-// Àü¿ª Äİ¹é ·¡ÆÛ ÇÔ¼ö
+// ì „ì—­ ì½œë°± ë˜í¼ í•¨ìˆ˜
 void DisplayCallback();
 void ReshapeCallback(int w, int h);
 void KeyboardCallback(unsigned char key, int x, int y);

@@ -1,13 +1,13 @@
-// Visual Studio º¸¾È °æ°í ºñÈ°¼ºÈ­
+// Visual Studio ë³´ì•ˆ ê²½ê³  ë¹„í™œì„±í™”
 #define _CRT_SECURE_NO_WARNINGS
 
 #include "UI.h"
-#include "Game.h" // Game ÀÎ½ºÅÏ½º Á¢±ÙÀ» À§ÇØ ÇÊ¿ä
+#include "Game.h" // Game ì¸ìŠ¤í„´ìŠ¤ ì ‘ê·¼ì„ ìœ„í•´ í•„ìš”
 #include <cstdio>
 #include <cstring>
 
 UI::UI() {
-    // ½ºÇÉ ¹öÆ° ÃÊ±âÈ­ (ÇÏ´Ü Áß¾Ó)
+    // ìŠ¤í•€ ë²„íŠ¼ ì´ˆê¸°í™” (í•˜ë‹¨ ì¤‘ì•™)
     float btnWidth = 100.0f;
     float btnHeight = 40.0f;
     float btnY = 30.0f;
@@ -30,14 +30,14 @@ void UI::Reset() {
     previewBall = 0;
     selectedSpin = SpinType::STRAIGHT;
 
-    // [Ãß°¡] ¸Ş´º Ä«Å×°í¸® ¹× ¹Ì¸®º¸±â ÃÊ±âÈ­
-    menuCategory = 0; // 0: °ø ¼±ÅÃ ¸Ş´ººÎÅÍ ½ÃÀÛ
+    // [2ë²ˆ] ë©”ë‰´ ì¹´í…Œê³ ë¦¬ ë° ë¯¸ë¦¬ë³´ê¸° ì´ˆê¸°í™”
+    menuCategory = 0; // 0: ê³µ ì„ íƒ ë©”ë‰´ì—ì„œ ì‹œì‘
     previewLaneTex = 0;
     previewWallTex = 0;
     previewCeilingTex = 0;
     previewFloorTex = 0;
 
-    // ½ºÇÉ ¹öÆ° »óÅÂ ¸®¼Â
+    // ìŠ¤í•€ ë²„íŠ¼ ìƒíƒœ ë¦¬ì…‹
     spinButtons[0].isSelected = true;
     spinButtons[1].isSelected = false;
     spinButtons[2].isSelected = false;
@@ -155,13 +155,13 @@ int UI::CalculateTotalScore() {
 }
 
 void UI::Draw() {
-    // ½ºÇÉ ¹öÆ° (Ç×»ó Ç¥½Ã)
+    // ìŠ¤í•€ ë²„íŠ¼ (í•­ìƒ í‘œì‹œ)
     Begin2D();
     DrawSpinButtons();
     DrawPowerGauge();
     End2D();
 
-    // ¸Ş´º (MÅ°·Î ¿­±â)
+    // ë©”ë‰´ (Mí‚¤ë¡œ ì—´ê¸°)
     if (menuOpen) {
         Begin2D();
         DrawMenu();
@@ -195,13 +195,13 @@ void UI::End2D() {
 }
 
 void UI::DrawPowerGauge() {
-    // ¿À¸¥ÂÊ Áß¾Ó¿¡ ¼¼·Î °ÔÀÌÁö
+    // ì˜¤ë¥¸ìª½ ì¤‘ì•™ì— ì„¸ë¡œ ê²Œì´ì§€
     float gaugeX = WINDOW_WIDTH - 80;
     float gaugeY = WINDOW_HEIGHT / 2 - 150;
     float gaugeWidth = 30;
     float gaugeHeight = 300;
 
-    // ¹è°æ
+    // ë°°ê²½
     glColor4f(0.2f, 0.2f, 0.2f, 0.8f);
     glBegin(GL_QUADS);
     glVertex2f(gaugeX, gaugeY);
@@ -210,7 +210,7 @@ void UI::DrawPowerGauge() {
     glVertex2f(gaugeX, gaugeY + gaugeHeight);
     glEnd();
 
-    // Å×µÎ¸®
+    // í…Œë‘ë¦¬
     glColor3f(1.0f, 1.0f, 1.0f);
     glLineWidth(2.0f);
     glBegin(GL_LINE_LOOP);
@@ -220,7 +220,7 @@ void UI::DrawPowerGauge() {
     glVertex2f(gaugeX, gaugeY + gaugeHeight);
     glEnd();
 
-    // °ÔÀÌÁö ¹Ù
+    // ê²Œì´ì§€ ë°”
     float fillHeight = powerGauge * gaugeHeight;
 
     glBegin(GL_QUADS);
@@ -251,7 +251,7 @@ void UI::DrawScoreboard3D() {
     float cellWidth = 90;
     float cellHeight = 50;
 
-    // ¹è°æ
+    // ë°°ê²½
     glColor4f(0.0f, 0.1f, 0.3f, 0.9f);
     glBegin(GL_QUADS);
     glVertex2f(boardX - 10, boardY - cellHeight - 10);
@@ -260,7 +260,7 @@ void UI::DrawScoreboard3D() {
     glVertex2f(boardX - 10, boardY + 30);
     glEnd();
 
-    // Å×µÎ¸®
+    // í…Œë‘ë¦¬
     glColor3f(0.3f, 0.5f, 0.8f);
     glLineWidth(2.0f);
     glBegin(GL_LINE_LOOP);
@@ -270,7 +270,7 @@ void UI::DrawScoreboard3D() {
     glVertex2f(boardX - 10, boardY + 30);
     glEnd();
 
-    // ÇÁ·¹ÀÓ ¹øÈ£ (1~10)
+    // í”„ë ˆì„ ë²ˆí˜¸ (1~10)
     glColor3f(0.0f, 0.8f, 0.8f);
     for (int i = 0; i < 10; i++) {
         char num[3];
@@ -278,18 +278,18 @@ void UI::DrawScoreboard3D() {
         DrawTextCentered(boardX + i * cellWidth + cellWidth / 2, boardY + 10, num);
     }
 
-    // °¢ ÇÁ·¹ÀÓ Á¡¼ö
+    // ê° í”„ë ˆì„ ì ìˆ˜
     for (int i = 0; i < 10; i++) {
         float x = boardX + i * cellWidth;
 
-        // ¼¿ ±¸ºĞ¼±
+        // ì…€ êµ¬ë¶„ì„ 
         glColor3f(0.3f, 0.5f, 0.8f);
         glBegin(GL_LINES);
         glVertex2f(x, boardY);
         glVertex2f(x, boardY - cellHeight);
         glEnd();
 
-        // Åõ±¸ °á°ú Ç¥½Ã
+        // íˆ¬êµ¬ ê²°ê³¼ í‘œì‹œ
         glColor3f(1.0f, 1.0f, 1.0f);
         char throwStr[10] = "";
 
@@ -310,7 +310,7 @@ void UI::DrawScoreboard3D() {
 
         DrawTextCentered(x + cellWidth / 2, boardY - 20, throwStr);
 
-        // ´©Àû Á¡¼ö
+        // ëˆ„ì  ì ìˆ˜
         if (frames[i].isComplete) {
             glColor3f(0.8f, 0.8f, 0.0f);
             char scoreStr[5];
@@ -319,14 +319,14 @@ void UI::DrawScoreboard3D() {
         }
     }
 
-    // ¸¶Áö¸· ±¸ºĞ¼±
+    // ë§ˆì§€ë§‰ êµ¬ë¶„ì„ 
     glColor3f(0.3f, 0.5f, 0.8f);
     glBegin(GL_LINES);
     glVertex2f(boardX + 10 * cellWidth, boardY);
     glVertex2f(boardX + 10 * cellWidth, boardY - cellHeight);
     glEnd();
 
-    // ÃÑÁ¡ Ç¥½Ã
+    // ì´ì  í‘œì‹œ
     glColor3f(1.0f, 1.0f, 1.0f);
     DrawText(boardX + 10 * cellWidth + 10, boardY + 10, "TOTAL");
 
@@ -346,15 +346,15 @@ void UI::DrawSpinButtons() {
     for (int i = 0; i < 3; i++) {
         Button& btn = spinButtons[i];
 
-        // ¹öÆ° ¹è°æ
+        // ë²„íŠ¼ ë°°ê²½
         if (btn.isSelected) {
-            glColor4f(0.2f, 0.6f, 0.2f, 0.9f);  // ¼±ÅÃµÊ - ³ì»ö
+            glColor4f(0.2f, 0.6f, 0.2f, 0.9f);  // ì„ íƒë¨ - ë…¹ìƒ‰
         }
         else if (btn.isHovered) {
-            glColor4f(0.4f, 0.4f, 0.6f, 0.9f);  // È£¹ö - ¹àÀº »ö
+            glColor4f(0.4f, 0.4f, 0.6f, 0.9f);  // í˜¸ë²„ - ë°ì€ ìƒ‰
         }
         else {
-            glColor4f(0.2f, 0.2f, 0.3f, 0.9f);  // ±âº» - ¾îµÎ¿î »ö
+            glColor4f(0.2f, 0.2f, 0.3f, 0.9f);  // ê¸°ë³¸ - ì–´ë‘ìš´ ìƒ‰
         }
 
         glBegin(GL_QUADS);
@@ -364,7 +364,7 @@ void UI::DrawSpinButtons() {
         glVertex2f(btn.x, btn.y + btn.height);
         glEnd();
 
-        // Å×µÎ¸®
+        // í…Œë‘ë¦¬
         if (btn.isSelected) {
             glColor3f(0.0f, 1.0f, 0.0f);
             glLineWidth(3.0f);
@@ -381,21 +381,21 @@ void UI::DrawSpinButtons() {
         glVertex2f(btn.x, btn.y + btn.height);
         glEnd();
 
-        // ÅØ½ºÆ®
+        // í…ìŠ¤íŠ¸
         glColor3f(1.0f, 1.0f, 1.0f);
         DrawTextCentered(btn.x + btn.width / 2, btn.y + btn.height / 2 - 5, btn.label);
     }
 
-    // ½ºÇÉ ¶óº§
+    // ìŠ¤í•€ ë¼ë²¨
     glColor3f(0.8f, 0.8f, 0.8f);
     DrawText(spinButtons[0].x - 50, spinButtons[0].y + 12, "Spin:");
 }
 
-// [½Å±Ô ±¸Çö] ÅØ½ºÃ³ ¹Ì¸®º¸±â ¹Ú½º ±×¸®±â
+// [2ë²ˆ í•„ìˆ˜] í…ìŠ¤ì²˜ ë¯¸ë¦¬ë³´ê¸° ë°•ìŠ¤ ê·¸ë¦¬ê¸°
 void UI::DrawTexturePreview(GLuint texID, float x, float y, float size) {
     if (texID == 0) return;
 
-    // ÅØ½ºÃ³ »ö»óÀÌ ¿Ö°îµÇÁö ¾Êµµ·Ï Èò»ö º£ÀÌ½º ¼³Á¤
+    // í…ìŠ¤ì²˜ ë°”ì¸ë”© ì „ ê¸°ë³¸ í°ìƒ‰ìœ¼ë¡œ ì„¤ì •
     glColor3f(1.0f, 1.0f, 1.0f);
 
     glEnable(GL_TEXTURE_2D);
@@ -403,17 +403,17 @@ void UI::DrawTexturePreview(GLuint texID, float x, float y, float size) {
 
     float halfSize = size / 2.0f;
 
-    // ÅØ½ºÃ³°¡ ÀÔÇôÁø »ç°¢Çü ±×¸®±â
+    // í…ìŠ¤ì²˜ë¥¼ ì…íŒ ì‚¬ê°í˜• ê·¸ë¦¬ê¸°
     glBegin(GL_QUADS);
-    glTexCoord2f(0.0f, 0.0f); glVertex2f(x - halfSize, y - halfSize); // ÁÂÇÏ
-    glTexCoord2f(1.0f, 0.0f); glVertex2f(x + halfSize, y - halfSize); // ¿ìÇÏ
-    glTexCoord2f(1.0f, 1.0f); glVertex2f(x + halfSize, y + halfSize); // ¿ì»ó
-    glTexCoord2f(0.0f, 1.0f); glVertex2f(x - halfSize, y + halfSize); // ÁÂ»ó
+    glTexCoord2f(0.0f, 0.0f); glVertex2f(x - halfSize, y - halfSize); // ì¢Œí•˜
+    glTexCoord2f(1.0f, 0.0f); glVertex2f(x + halfSize, y - halfSize); // ìš°í•˜
+    glTexCoord2f(1.0f, 1.0f); glVertex2f(x + halfSize, y + halfSize); // ìš°ìƒ
+    glTexCoord2f(0.0f, 1.0f); glVertex2f(x - halfSize, y + halfSize); // ì¢Œìƒ
     glEnd();
 
     glDisable(GL_TEXTURE_2D);
 
-    // ³ë¶õ»ö Å×µÎ¸® ±×¸®±â
+    // ë…¸ë€ìƒ‰ í…Œë‘ë¦¬ ê·¸ë¦¬ê¸°
     glColor3f(1.0f, 1.0f, 0.0f);
     glLineWidth(2.0f);
     glBegin(GL_LINE_LOOP);
@@ -424,28 +424,29 @@ void UI::DrawTexturePreview(GLuint texID, float x, float y, float size) {
     glEnd();
 }
 
+// [2ë²ˆ ì „ì²´ ê¸°ëŠ¥] ë©”ë‰´ ê·¸ë¦¬ê¸°
 void UI::DrawMenu() {
-    // 1. ¾îµÎ¿î ¹è°æ ¿À¹ö·¹ÀÌ
+    // 1. ì–´ë‘ìš´ ë°°ê²½ ì˜¤ë²„ë ˆì´
     glColor4f(0.0f, 0.0f, 0.0f, 0.7f);
     glBegin(GL_QUADS);
     glVertex2f(0, 0); glVertex2f(WINDOW_WIDTH, 0);
     glVertex2f(WINDOW_WIDTH, WINDOW_HEIGHT); glVertex2f(0, WINDOW_HEIGHT);
     glEnd();
 
-    // 2. ¸Ş´º ¹Ú½º (Å©±â È®´ë ¹öÀü À¯Áö)
+    // 2. ë©”ë‰´ ë°•ìŠ¤ (í¬ê¸° í™•ëŒ€ ê°€ëŠ¥ í•„ìš”)
     float menuWidth = 600;
     float menuHeight = 450;
     float menuX = (WINDOW_WIDTH - menuWidth) / 2;
     float menuY = (WINDOW_HEIGHT - menuHeight) / 2;
 
-    // ¸Ş´º ¹è°æ
+    // ë©”ë‰´ ë°°ê²½
     glColor4f(0.15f, 0.15f, 0.2f, 0.95f);
     glBegin(GL_QUADS);
     glVertex2f(menuX, menuY); glVertex2f(menuX + menuWidth, menuY);
     glVertex2f(menuX + menuWidth, menuY + menuHeight); glVertex2f(menuX, menuY + menuHeight);
     glEnd();
 
-    // ¸Ş´º Å×µÎ¸®
+    // ë©”ë‰´ í…Œë‘ë¦¬
     glColor3f(0.8f, 0.7f, 0.2f);
     glLineWidth(3.0f);
     glBegin(GL_LINE_LOOP);
@@ -453,44 +454,44 @@ void UI::DrawMenu() {
     glVertex2f(menuX + menuWidth, menuY + menuHeight); glVertex2f(menuX, menuY + menuHeight);
     glEnd();
 
-    // 3. Ä«Å×°í¸®º° µ¥ÀÌÅÍ ÁØºñ
+    // 3. ì¹´í…Œê³ ë¦¬ë³„ë¡œ ë‹¤ë¥¸ ë‚´ìš© ì¤€ë¹„
     const char* categoryTitle = "";
     const char* currentItemText = "";
     char buffer[50];
     int currentIdx = 0;
     int maxCount = 0;
-    GLuint previewTexID = 0; // [Áß¿ä] º¸¿©ÁÙ ÅØ½ºÃ³ ID
+    GLuint previewTexID = 0; // [ì¤‘ìš”] ë³´ì—¬ì¤„ í…ìŠ¤ì²˜ ID
 
     Lane& lane = Game::Instance().lane;
 
     switch (menuCategory) {
-    case 0: // °ø ¼±ÅÃ
+    case 0: // ê³µ ì„ íƒ
         categoryTitle = "< SELECT BALL >";
         {
             const char* ballNames[] = { "  Red Ball", "  Blue Ball", "  Green Ball" };
             currentItemText = ballNames[previewBall];
-            // °øÀº º°µµ ÇÔ¼ö·Î ±×¸³´Ï´Ù
+            // ë³„ë„ ê³µ ê·¸ë¦¬ê¸° í•¨ìˆ˜ë¥¼ ê·¸ë¦¬ë¯€ë¡œ
         }
         break;
-    case 1: // ·¹ÀÎ
+    case 1: // ë ˆì¸
         categoryTitle = "< LANE TEXTURE >";
         currentIdx = previewLaneTex;
         maxCount = lane.laneTextures.size();
         if (maxCount > 0) previewTexID = lane.laneTextures[currentIdx];
         break;
-    case 2: // º®
+    case 2: // ë²½
         categoryTitle = "< WALL TEXTURE >";
         currentIdx = previewWallTex;
         maxCount = lane.wallTextures.size();
         if (maxCount > 0) previewTexID = lane.wallTextures[currentIdx];
         break;
-    case 3: // ÃµÀå
+    case 3: // ì²œì¥
         categoryTitle = "< CEILING TEXTURE >";
         currentIdx = previewCeilingTex;
         maxCount = lane.ceilingTextures.size();
         if (maxCount > 0) previewTexID = lane.ceilingTextures[currentIdx];
         break;
-    case 4: // ¹Ù´Ú
+    case 4: // ë°”ë‹¥
         categoryTitle = "< FLOOR TEXTURE >";
         currentIdx = previewFloorTex;
         maxCount = lane.floorTextures.size();
@@ -498,31 +499,31 @@ void UI::DrawMenu() {
         break;
     }
 
-    // 4. Å¸ÀÌÆ² Ãâ·Â
+    // 4. íƒ€ì´í‹€ ì¶œë ¥
     glColor3f(1.0f, 1.0f, 0.0f);
-    DrawTextLarge(WINDOW_WIDTH / 2 - 100 , menuY + menuHeight - 50, categoryTitle);
+    DrawTextLarge(WINDOW_WIDTH / 2 - 100, menuY + menuHeight - 50, categoryTitle);
 
-    // 5. Áß¾Ó ¹Ì¸®º¸±â (°ø ±×¸² or ÅØ½ºÃ³ ÀÌ¹ÌÁö)
+    // 5. ì¤‘ì•™ ë¯¸ë¦¬ë³´ê¸° (ê³µ ê·¸ë¦¬ê¸° or í…ìŠ¤ì²˜ ì´ë¯¸ì§€)
     float previewCenterX = WINDOW_WIDTH / 2;
-    float previewCenterY = WINDOW_HEIGHT / 2 + 30; // À§Ä¡ ¹Ì¼¼ Á¶Á¤
+    float previewCenterY = WINDOW_HEIGHT / 2 + 30; // ìœ„ì¹˜ ë¯¸ì„¸ ì¡°ì •
 
     if (menuCategory == 0) {
-        // [°ø] ±âÁ¸ ¿ø ±×¸®±â ÇÔ¼ö È£Ãâ
+        // [ê³µ] ë³„ë„ ê³µ ê·¸ë¦¬ê¸° í•¨ìˆ˜ í˜¸ì¶œ
         DrawBallPreview();
     }
     else {
-        // [ÅØ½ºÃ³] ÀÌ¹ÌÁö ¹Ú½º ±×¸®±â (Å©±â 150x150)
+        // [í…ìŠ¤ì²˜] ì´ë¯¸ì§€ ë°•ìŠ¤ ê·¸ë¦¬ê¸° (í¬ê¸° 150x150)
         if (previewTexID != 0) {
             DrawTexturePreview(previewTexID, previewCenterX, previewCenterY, 150.0f);
         }
         else {
-            // ÅØ½ºÃ³°¡ ¾øÀ» ¶§ (ºó »óÀÚ or ÅØ½ºÆ®)
+            // í…ìŠ¤ì²˜ê°€ ì—†ì„ ë•Œ (ë¹ˆ ìƒíƒœ or í…ìŠ¤íŠ¸)
             glColor3f(0.5f, 0.5f, 0.5f);
             DrawTextCentered(previewCenterX, previewCenterY, "No Image");
         }
     }
 
-    // 6. ¾ÆÀÌÅÛ ÀÌ¸§/¹øÈ£ Ãâ·Â (¹Ì¸®º¸±â ±×¸² ¾Æ·¡)
+    // 6. ì•„ì´í…œ ì´ë¦„/ë²ˆí˜¸ í‘œì‹œ (ë¯¸ë¦¬ë³´ê¸° ê·¸ë¦¼ ì•„ë˜)
     if (menuCategory != 0) {
         if (maxCount > 0)
             sprintf(buffer, "Texture %d / %d", currentIdx + 1, maxCount);
@@ -532,10 +533,10 @@ void UI::DrawMenu() {
     }
 
     glColor3f(1.0f, 1.0f, 1.0f);
-    // [À§Ä¡ Á¶Á¤] ¹Ì¸®º¸±â ±×¸² ¾Æ·¡·Î ±Û¾¾ ³»¸®±â (120 -> 90)
-    DrawTextLarge(WINDOW_WIDTH / 2 - 75 , menuY + 90, currentItemText);
+    // ë¯¸ë¦¬ë³´ê¸° ê·¸ë¦¼ ì•„ë˜ìª½ ì•½ê°„ ë‚´ë ¤ì„œ (120 -> 90)
+    DrawTextLarge(WINDOW_WIDTH / 2 - 75, menuY + 90, currentItemText);
 
-    // 7. ÁÂ¿ì È­»ìÇ¥ (¹Ì¸®º¸±â Áß¾Ó ³ôÀÌ¿¡ ¸ÂÃã)
+    // 7. ì¢Œìš° í™”ì‚´í‘œ (ë¯¸ë¦¬ë³´ê¸° ì¤‘ì•™ ë†’ì´ì— ë°°ì¹˜)
     float arrowY = previewCenterY;
     DrawTextLarge(menuX + 50, arrowY, "<");
     DrawText(menuX + 40, arrowY - 30, "LEFT");
@@ -543,30 +544,36 @@ void UI::DrawMenu() {
     DrawTextLarge(menuX + menuWidth - 65, arrowY, ">");
     DrawText(menuX + menuWidth - 80, arrowY - 30, "RIGHT");
 
-    // 8. Á¶ÀÛ ¾È³»
+    // 8. í•˜ë‹¨ ì•ˆë‚´
     glColor3f(0.6f, 0.6f, 0.6f);
-    DrawTextCentered(WINDOW_WIDTH / 2, menuY + 50, "TAB: Change Category");
+    DrawTextCentered(WINDOW_WIDTH / 2, menuY + 50, "Q: Change Category");
     DrawTextCentered(WINDOW_WIDTH / 2, menuY + 30, "LEFT/RIGHT: Change Item");
     DrawTextCentered(WINDOW_WIDTH / 2, menuY + 10, "ENTER: Apply Selection");
-    DrawTextCentered(WINDOW_WIDTH / 2, menuY - 30, "M: Close Menu");
+    DrawTextCentered(WINDOW_WIDTH / 2, menuY - 10, "M: Close Menu");
+
+    // 9. í˜„ì¬ ì„ íƒ í‘œì‹œ (ê³µ ë©”ë‰´ì¼ ë•Œë§Œ)
+    if (menuCategory == 0 && previewBall == selectedBall) {
+        glColor3f(0.0f, 1.0f, 0.0f);
+        DrawTextCentered(WINDOW_WIDTH / 2, menuY + 110, "(Currently Selected)");
+    }
 }
 
 void UI::DrawBallPreview() {
-    // ¸Ş´º Áß¾Ó¿¡ °ø ±×¸®±â (2D ¿øÀ¸·Î Ç¥Çö)
+    // ë©”ë‰´ ì¤‘ì•™ì— ê³µ ê·¸ë¦¬ê¸° (2D ì›ìœ¼ë¡œ í‘œí˜„)
     float centerX = WINDOW_WIDTH / 2;
     float centerY = WINDOW_HEIGHT / 2 + 20;
     float radius = 60.0f;
 
-    // °ø »ö»ó
+    // ê³µ ìƒ‰ìƒ
     vec3 colors[] = {
-        vec3(0.8f, 0.1f, 0.1f),  // »¡°­
-        vec3(0.1f, 0.2f, 0.8f),  // ÆÄ¶û
-        vec3(0.1f, 0.7f, 0.2f)   // ÃÊ·Ï
+        vec3(0.8f, 0.1f, 0.1f),  // ë¹¨ê°•
+        vec3(0.1f, 0.2f, 0.8f),  // íŒŒë‘
+        vec3(0.1f, 0.7f, 0.2f)   // ì´ˆë¡
     };
 
     vec3 color = colors[previewBall];
 
-    // °ø ±×¸®±â (¿ø)
+    // ê³µ ê·¸ë¦¬ê¸° (ì›)
     glColor3f(color.r, color.g, color.b);
     glBegin(GL_TRIANGLE_FAN);
     glVertex2f(centerX, centerY);
@@ -576,7 +583,7 @@ void UI::DrawBallPreview() {
     }
     glEnd();
 
-    // °ø ÇÏÀÌ¶óÀÌÆ® (±¤ÅÃ È¿°ú)
+    // ê³µ í•˜ì´ë¼ì´íŠ¸ (ê´‘íƒ íš¨ê³¼)
     glColor4f(1.0f, 1.0f, 1.0f, 0.3f);
     glBegin(GL_TRIANGLE_FAN);
     float hx = centerX - radius * 0.3f;
@@ -589,7 +596,7 @@ void UI::DrawBallPreview() {
     }
     glEnd();
 
-    // °ø Å×µÎ¸®
+    // ê³µ í…Œë‘ë¦¬
     glColor3f(0.3f, 0.3f, 0.3f);
     glLineWidth(2.0f);
     glBegin(GL_LINE_LOOP);
@@ -603,10 +610,10 @@ void UI::DrawBallPreview() {
 void UI::ToggleMenu() {
     menuOpen = !menuOpen;
     if (menuOpen) {
-        // [º¯°æ] ¸Ş´º ¿­ ¶§ ÇöÀç °ÔÀÓ »óÅÂ¸¦ UI º¯¼ö·Î °¡Á®¿È (µ¿±âÈ­)
+        // [2ë²ˆ] ë©”ë‰´ ì—´ ë•Œ í˜„ì¬ ì„ íƒ ìƒíƒœë¥¼ UI ë³€ìˆ˜ë¡œ ê°€ì ¸ì˜¤ê¸° (ë™ê¸°í™”)
         previewBall = selectedBall;
 
-        // LaneÀÇ ÇöÀç ÅØ½ºÃ³ ÀÎµ¦½º °¡Á®¿À±â
+        // Laneì˜ í˜„ì¬ í…ìŠ¤ì²˜ ì¸ë±ìŠ¤ ê°€ì ¸ì˜¤ê¸°
         Lane& lane = Game::Instance().lane;
         previewLaneTex = lane.currentLaneIndex;
         previewWallTex = lane.currentWallIndex;
@@ -615,13 +622,14 @@ void UI::ToggleMenu() {
     }
 }
 
-// [Ãß°¡] ÅÇ Å°¿ë Ä«Å×°í¸® ÀüÈ¯
+// [2ë²ˆ í•„ìˆ˜] Q í‚¤ë¡œ ì¹´í…Œê³ ë¦¬ ì „í™˜
 void UI::NextCategory() {
     if (!menuOpen) return;
     menuCategory++;
     if (menuCategory > 4) menuCategory = 0;
 }
 
+// [2ë²ˆ í•„ìˆ˜] ì™¼ìª½ í™”ì‚´í‘œ - ëª¨ë“  ì¹´í…Œê³ ë¦¬ ì§€ì›
 void UI::MenuLeft() {
     if (!menuOpen) return;
     Lane& lane = Game::Instance().lane;
@@ -654,6 +662,7 @@ void UI::MenuLeft() {
     }
 }
 
+// [2ë²ˆ í•„ìˆ˜] ì˜¤ë¥¸ìª½ í™”ì‚´í‘œ - ëª¨ë“  ì¹´í…Œê³ ë¦¬ ì§€ì›
 void UI::MenuRight() {
     if (!menuOpen) return;
     Lane& lane = Game::Instance().lane;
@@ -686,15 +695,22 @@ void UI::MenuRight() {
     }
 }
 
-// [ÀÌ¸§ º¯°æ] ¼±ÅÃ È®Á¤
+// [1ë²ˆ í˜¸í™˜] ê³µë§Œ ì„ íƒ
+void UI::SelectBall() {
+    if (!menuOpen) return;
+    selectedBall = previewBall;
+    Game::Instance().ball.SetBallType(selectedBall);
+}
+
+// [2ë²ˆ í•„ìˆ˜] ëª¨ë“  ì„ íƒ í™•ì • (ê³µ + í…ìŠ¤ì²˜)
 void UI::SelectItem() {
     if (!menuOpen) return;
 
-    // 1. °ø ¼±ÅÃ Àû¿ë
+    // 1. ê³µ ì„ íƒ ì ìš©
     selectedBall = previewBall;
     Game::Instance().ball.SetBallType(selectedBall);
 
-    // 2. ÅØ½ºÃ³ ¼±ÅÃ Àû¿ë
+    // 2. í…ìŠ¤ì²˜ ì„ íƒ ì ìš©
     Game::Instance().lane.SetLaneTexture(previewLaneTex);
     Game::Instance().lane.SetWallTexture(previewWallTex);
     Game::Instance().lane.SetCeilingTexture(previewCeilingTex);
@@ -702,17 +718,17 @@ void UI::SelectItem() {
 }
 
 void UI::OnMouseClick(int x, int y) {
-    // y ÁÂÇ¥ µÚÁı±â (GLUTÀº À§¿¡¼­ ¾Æ·¡·Î, OpenGLÀº ¾Æ·¡¼­ À§·Î)
+    // y ì¢Œí‘œ ë’¤ì§‘ê¸° (GLUTì€ ìœ„ì—ì„œ ì•„ë˜ë¡œ, OpenGLì€ ì•„ë˜ì„œ ìœ„ë¡œ)
     y = WINDOW_HEIGHT - y;
 
-    // ½ºÇÉ ¹öÆ° Å¬¸¯ Ã¼Å©
+    // ìŠ¤í•€ ë²„íŠ¼ í´ë¦­ ì²´í¬
     for (int i = 0; i < 3; i++) {
         if (IsPointInButton(x, y, spinButtons[i])) {
-            // ¸ğµç ¹öÆ° ¼±ÅÃ ÇØÁ¦
+            // ëª¨ë“  ë²„íŠ¼ ì„ íƒ í•´ì œ
             for (int j = 0; j < 3; j++) {
                 spinButtons[j].isSelected = false;
             }
-            // Å¬¸¯ÇÑ ¹öÆ° ¼±ÅÃ
+            // í´ë¦­í•œ ë²„íŠ¼ ì„ íƒ
             spinButtons[i].isSelected = true;
             selectedSpin = spinButtons[i].spinType;
             break;
@@ -723,7 +739,7 @@ void UI::OnMouseClick(int x, int y) {
 void UI::OnMouseMove(int x, int y) {
     y = WINDOW_HEIGHT - y;
 
-    // È£¹ö »óÅÂ ¾÷µ¥ÀÌÆ®
+    // í˜¸ë²„ ìƒíƒœ ì—…ë°ì´íŠ¸
     for (int i = 0; i < 3; i++) {
         spinButtons[i].isHovered = IsPointInButton(x, y, spinButtons[i]);
     }
@@ -747,9 +763,9 @@ void UI::DrawTextLarge(float x, float y, const char* text) {
 }
 
 void UI::DrawTextCentered(float x, float y, const char* text, void* font) {
-    // ÅØ½ºÆ® ³Êºñ ´ë·« °è»ê
+    // í…ìŠ¤íŠ¸ ë„ˆë¹„ ëŒ€ëµ ê³„ì‚°
     int len = strlen(text);
-    float width = len * 10;  // ´ë·«ÀûÀÎ ±ÛÀÚ ³Êºñ
+    float width = len * 10;  // ëŒ€ëµì ì¸ ê¸€ì ë„ˆë¹„
     DrawText(x - width / 2, y, text, font);
 }
 
@@ -761,10 +777,10 @@ void UI::DrawGameState(GameState state) {
 
     switch (state) {
     case GameState::AIMING:
-        stateText = "WASD: Move | SPACE: Charge | M: Menu";
+        stateText = "WASD:  Move | SPACE: Charge | M: Menu | Q: Change Category";
         break;
     case GameState::CHARGING:
-        stateText = "Release SPACE to throw!";
+        stateText = "Release SPACE to throw! ";
         break;
     case GameState::ROLLING:
         stateText = "";
@@ -773,7 +789,7 @@ void UI::DrawGameState(GameState state) {
         stateText = "";
         break;
     case GameState::GAME_OVER:
-        stateText = "GAME OVER! Press R to restart";
+        stateText = "GAME OVER!  Press R to restart";
         break;
     default:
         break;
@@ -803,4 +819,3 @@ void UI::DrawStrikeSpare(bool isStrike, bool isSpare) {
 void UI::SetCameraPitch(float pitch) {
     cameraPitch = pitch;
 }
-

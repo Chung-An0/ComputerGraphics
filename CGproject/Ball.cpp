@@ -1,254 +1,378 @@
 #include "Ball.h"
+#include <cmath>
+#include <algorithm>
+#include "Texture.h"
+#include "common.h"
+
+static float Clamp01(float v) {
+    if (v < 0.0f) return 0.0f;
+    if (v > 1.0f) return 1.0f;
+    return v;
+}
+
+// ì •ì  ë©¤ë²„ ì´ˆê¸°í™”
+GLuint Ball::textures[3] = { 0, 0, 0 };
+GLuint Ball::currentTexture = 0;
+
+void Ball::LoadTextures() {
+    textures[0] = Texture::Load("textures/ball.jpg");
+    textures[1] = Texture::Load("textures/ball1.jpg");
+    textures[2] = Texture::Load("textures/ball2.jpg");
+    currentTexture = textures[0];
+}
 
 Ball::Ball() {
     radius = BALL_RADIUS;
     mass = BALL_MASS;
-    spinType = SpinType::STRAIGHT;
-    isRolling = false;
-    isInGutter = false;
-    rotationAngle = 0.0f;
-    rotationAxis = vec3(1.0f, 0.0f, 0.0f);
-    textureID = 0;
-    color = vec3(0.8f, 0.1f, 0.1f);  // ±âº» »¡°£ °ø
     ballType = 0;
 
-    Reset(0.0f);
+    rollTime = 0.0f;
+    totalTime = 0.0f;
+    useSpline = false;
+    splineSpeed = 0.0f;
+
+    pathStartX = pathEndX = 0.0f;
+    pathStartZ = pathEndZ = 0.0f;
+    pathAmp = 0.0f;
+
+    Reset();
+}
+
+void Ball::Reset() {
+    position = vec3(0.0f, radius, 0.5f);
+    velocity = vec3(0.0f);
+    angularVelocity = vec3(0.0f);
+
+    rotationAngle = 0.0f;
+    rotationAxis = vec3(1.0f, 0.0f, 0.0f);
+
+    isRolling = false;
+    isInGutter = false;
+    spinType = SpinType::STRAIGHT;
+
+    rollTime = 0.0f;
+    totalTime = 0.0f;
+    useSpline = false;
+    splineSpeed = 0.0f;
+
+    pathStartX = pathEndX = 0.0f;
+    pathStartZ = pathEndZ = 0.0f;
+    pathAmp = 0.0f;
 }
 
 void Ball::Reset(float startX) {
-    position = vec3(startX, radius, 0.5f);  // ÆÄ¿ï¶óÀÎ ¾Õ
-    velocity = vec3(0.0f);
-    angularVelocity = vec3(0.0f);
-    isRolling = false;
+    Reset();
+    position.x = startX;
+}
+
+bool Ball::IsStopped() {
+    return !isRolling || length(velocity) < 0.1f;
+}
+
+void Ball::Launch(float power, SpinType spin) {
+    isRolling = true;
     isInGutter = false;
+
+    spinType = spin;
     rollTime = 0.0f;
-    this->startX = startX;
-    rotationAngle = 0.0f;
+
+    float p = Clamp01(power);
+    float shaped = powf(p, 1.15f);
+
+    float baseSpeed = 7.5f + shaped * 11.0f;
+
+    if (spin == SpinType::STRAIGHT) {
+        baseSpeed *= 1.25f;
+    }
+    else {
+        if (baseSpeed > 14.5f) baseSpeed = 14.5f;
+    }
+
+    splineSpeed = baseSpeed;
+    velocity = vec3(0.0f, 0.0f, -baseSpeed);
+
+    if (spin != SpinType::STRAIGHT) {
+        useSpline = true;
+        SetupSpline(baseSpeed, spin);
+    }
+    else {
+        useSpline = false;
+        angularVelocity = vec3(0.0f);
+        pathAmp = 0.0f;
+    }
+}
+
+void Ball::SetupSpline(float baseSpeed, SpinType spin) {
+    pathStartX = position.x;
+    pathStartZ = position.z;
+
+    pathEndX = pathStartX;
+    pathEndZ = PIN_START_Z;
+
+    float safeHalf = (LANE_WIDTH * 0.5f) - BALL_RADIUS - 0.02f;
+    if (safeHalf < 0.05f) safeHalf = 0.05f;
+
+    float amp = safeHalf * 0.85f;
+    float sign = (spin == SpinType::LEFT_HOOK) ? +1.0f : -1.0f;
+    pathAmp = sign * amp;
+
+    auto evalAt = [&](float t) -> vec3 {
+        const float PI = 3.14159265f;
+        float x = pathStartX + pathAmp * sinf(PI * t);
+        float z = (1.0f - t) * pathStartZ + t * pathEndZ;
+        return vec3(x, radius, z);
+        };
+
+    float lengthSum = 0.0f;
+    vec3 prev = evalAt(0.0f);
+    const int N = 80;
+    for (int i = 1; i <= N; i++) {
+        float t = (float)i / (float)N;
+        vec3 cur = evalAt(t);
+        lengthSum += length(cur - prev);
+        prev = cur;
+    }
+
+    float distZ = fabsf(pathEndZ - pathStartZ);
+    if (distZ < 0.001f) distZ = 0.001f;
+    if (lengthSum < 0.001f) lengthSum = distZ;
+
+    totalTime = lengthSum / std::max(0.1f, baseSpeed);
+
+    if (totalTime < 0.60f) totalTime = 0.60f;
+
+    angularVelocity = vec3(0.0f, (spin == SpinType::LEFT_HOOK) ? 1.0f : -1.0f, 0.0f);
+}
+
+vec3 Ball::EvaluateCardinalSpline(const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float t) {
+    const float tension = 0.5f;
+    float t2 = t * t;
+    float t3 = t2 * t;
+
+    float b0 = -tension * t3 + 2.0f * tension * t2 - tension * t;
+    float b1 = (2.0f - tension) * t3 + (tension - 3.0f) * t2 + 1.0f;
+    float b2 = (tension - 2.0f) * t3 + (3.0f - 2.0f * tension) * t2 + tension * t;
+    float b3 = tension * t3 - tension * t2;
+
+    return p0 * b0 + p1 * b1 + p2 * b2 + p3 * b3;
+}
+
+vec3 Ball::EvaluateSpline(float t) {
+    t = Clamp01(t);
+    const float PI = 3.14159265f;
+
+    float x = pathStartX + pathAmp * sinf(PI * t);
+    float z = (1.0f - t) * pathStartZ + t * pathEndZ;
+
+    return vec3(x, radius, z);
 }
 
 void Ball::Update(float dt) {
     if (!isRolling) return;
 
-    //°æ°ú ½Ã°£ ¾÷µ¥ÀÌÆ®
     rollTime += dt;
 
-    // [¼öÁ¤ Æ÷ÀÎÆ® 2] ½ºÇÉ È¿°ú Àû¿ë
-    ApplySpinEffect(dt);
+    if (useSpline && totalTime > 0.0f) {
+        float t = rollTime / totalTime;
 
-    // ¸¶Âû Àû¿ë
-    ApplyFriction(dt);
+        if (t >= 1.0f) {
+            t = 1.0f;
+            position = EvaluateSpline(t);
+            useSpline = false;
 
-    // À§Ä¡ ¾÷µ¥ÀÌÆ®
-    position += velocity * dt;
+            float keep = (splineSpeed > 0.1f) ? splineSpeed : 10.0f;
+            velocity = vec3(0.0f, 0.0f, -keep);
+        }
+        else {
+            vec3 pos = EvaluateSpline(t);
 
-    // È¸Àü ¾÷µ¥ÀÌÆ® (½Ã°¢Àû È¿°ú)
-    float speed = length(velocity);
-    if (speed > 0.01f) {
-        // ÁøÇà ¹æÇâ¿¡ ¼öÁ÷ÀÎ ÃàÀ¸·Î È¸Àü
-        rotationAxis = normalize(cross(vec3(0.0f, 1.0f, 0.0f), velocity));
-        rotationAngle += (speed / radius) * dt * 180.0f / 3.14159f;
-        if (rotationAngle > 360.0f) rotationAngle -= 360.0f;
+            float eps = 0.0025f;
+            float t2 = t + eps;
+            if (t2 > 1.0f) t2 = 1.0f;
+            vec3 pos2 = EvaluateSpline(t2);
+
+            vec3 tangent = pos2 - pos;
+            if (length(tangent) > 0.00001f) {
+                velocity = normalize(tangent) * splineSpeed;
+            }
+
+            position = pos;
+        }
+
+        position.y = radius;
+    }
+    else {
+        ApplyFriction(dt);
+        position += velocity * dt;
     }
 
-    // °ÅÅÍ Ã¼Å©
+    if (position.y < radius) position.y = radius;
+
     CheckGutter();
 
-    // °øÀÌ ·¹ÀÎ ³¡À» ¹ş¾î³µ´ÂÁö Ã¼Å©
-    if (position.z < -LANE_LENGTH - 1.0f) {
-        isRolling = false;
+    // íšŒì „ ì• ë‹ˆë©”ì´ì…˜
+    float speed = length(velocity);
+    if (speed > 0.01f) {
+        rotationAngle += speed * dt * 100.0f;
+        vec3 cross_result = cross(vec3(0, 1, 0), velocity);
+        if (length(cross_result) > 0.001f) {
+            rotationAxis = normalize(cross_result);
+        }
     }
-}
 
-void Ball::Launch(float power, SpinType spin) {
-    spinType = spin;
-    isRolling = true;
-    isInGutter = false;
-
-    // ±âº» ¼Óµµ (¾ÕÀ¸·Î)
-    float baseSpeed = power * 10.0f;  // ¼Óµµ°¨ ¾à°£ »óÇâ
-    velocity = vec3(0.0f, 0.0f, -baseSpeed);
-
-    startX = position.x;
-    rollTime = 0.0f;
-
-    // [¼öÁ¤ Æ÷ÀÎÆ® 2] ½ºÇÉ¿¡ µû¸¥ ¹°¸®°ª ¼³Á¤ (Ver 1 ½ºÅ¸ÀÏ·Î º¹¿ø)
-    switch (spin) {
-    case SpinType::STRAIGHT:
-        angularVelocity = vec3(0.0f);
-        break;
-    case SpinType::LEFT_HOOK:
-        // ¿ŞÂÊÀ¸·Î ÈÖ°Ô ÇÏ±â À§ÇØ: ¾à°£ ¿À¸¥ÂÊÀ¸·Î Ãâ¹ß + °­ÇÑ ¿ŞÂÊ ½ºÇÉ
-        velocity.x = 0.8f;
-        angularVelocity = vec3(0.0f, 5.0f, 0.0f); // YÃà È¸Àü (¹İ½Ã°è)
-        break;
-    case SpinType::RIGHT_HOOK:
-        // ¿À¸¥ÂÊÀ¸·Î ÈÖ°Ô ÇÏ±â À§ÇØ: ¾à°£ ¿ŞÂÊÀ¸·Î Ãâ¹ß + °­ÇÑ ¿À¸¥ÂÊ ½ºÇÉ
-        velocity.x = -0.8f;
-        angularVelocity = vec3(0.0f, -5.0f, 0.0f); // YÃà È¸Àü (½Ã°è)
-        break;
+    if (position.z < PIN_START_Z - 2.0f || length(velocity) < 0.1f) {
+        velocity *= 0.8f;
+        if (length(velocity) < 0.05f) {
+            isRolling = false;
+            velocity = vec3(0.0f);
+        }
     }
-}
-
-void Ball::ApplySpinEffect(float dt) {
-    // ½ºÇÉ ¾øÀ¸¸é ¹«½Ã
-    if (abs(angularVelocity.y) < 0.01f) return;
-
-    // [¼öÁ¤ Æ÷ÀÎÆ® 2] ÈÅ Å¸ÀÌ¹Ö°ú °­µµ Á¶Àı (È®½ÇÇÏ°Ô ÈÖµµ·Ï)
-    if (rollTime < 0.8f) return; // 0.4ÃÊ ÈÄºÎÅÍ ÈÅ ¹ß»ı
-
-    float hookTime = rollTime - 0.4f;
-    float hookStrength = hookTime * 2.0f;  // ÈÖ´Â Èû °­È­
-    hookStrength = fmin(hookStrength, 8.0f);
-
-    // ÈÅ ¹æÇâ (angularVelocity.y > 0 ÀÌ¸é Left, ¿ŞÂÊÀ¸·Î ÈÖ±â)
-    float hookDirection = (angularVelocity.y > 0) ? -1.0f : 1.0f;
-
-    // X ¹æÇâ °¡¼Óµµ Àû¿ë (ÈÖ¾îÁö´Â È¿°ú)
-    velocity.x += hookDirection * hookStrength * dt;
-
-    // ¼Óµµ Á¦ÇÑ
-    float maxSideSpeed = 4.0f;
-    velocity.x = fmax(-maxSideSpeed, fmin(maxSideSpeed, velocity.x));
 }
 
 void Ball::ApplyFriction(float dt) {
-    if (length(velocity) < 0.01f) {
-        velocity = vec3(0.0f);
-        return;
+    float speed = length(velocity);
+    if (speed < 0.01f) return;
+
+    float frictionCoeff = FRICTION;
+
+    if (spinType == SpinType::STRAIGHT) {
+        frictionCoeff *= 0.45f;
     }
 
-    float frictionCoeff = isInGutter ? FRICTION * 2.0f : FRICTION;
-    vec3 frictionForce = -normalize(velocity) * frictionCoeff * mass * abs(GRAVITY);
-    velocity += frictionForce / mass * dt;
+    if (isInGutter) frictionCoeff *= 2.0f;
 
-    // ÃÖ¼Ò ¼Óµµ ÀÌÇÏ¸é Á¤Áö
-    if (length(velocity) < 0.1f) {
-        velocity = vec3(0.0f);
-    }
+    vec3 frictionDir = -normalize(velocity);
+    vec3 frictionForce = frictionDir * frictionCoeff * mass * fabsf(GRAVITY);
+    velocity += frictionForce * dt;
+
+    if (length(velocity) < 0.05f) velocity = vec3(0.0f);
 }
 
 void Ball::CheckGutter() {
     float gutterEdge = LANE_WIDTH / 2.0f;
 
-    if (abs(position.x) > gutterEdge) {
+    if (fabsf(position.x) > gutterEdge) {
         isInGutter = true;
 
-        // °ÅÅÍ ¾È¿¡¼­ ÀÌµ¿ (»ìÂ¦ ¾Æ·¡·Î)
-        if (position.y > radius * 0.7f) {
-            position.y -= 0.01f;
+        if (position.x > gutterEdge) {
+            position.x = gutterEdge + GUTTER_WIDTH / 2.0f;
+        }
+        else {
+            position.x = -gutterEdge - GUTTER_WIDTH / 2.0f;
         }
 
-        // °ÅÅÍ °æ°è¿¡ ¸ÂÃã
-        float gutterCenter = (gutterEdge + GUTTER_WIDTH / 2.0f) * sign(position.x);
-        position.x = gutterCenter;
-
-        // ¿·À¸·Î °¡´Â ¼Óµµ Á¦°Å
         velocity.x = 0.0f;
+        useSpline = false;
     }
 }
 
 void Ball::Draw() {
-    glPushMatrix();
+    glDisable(GL_COLOR_MATERIAL);
 
+    glPushMatrix();
     glTranslatef(position.x, position.y, position.z);
     glRotatef(rotationAngle, rotationAxis.x, rotationAxis.y, rotationAxis.z);
 
-    // [¼öÁ¤ Æ÷ÀÎÆ® 1] °ø »ö»ó Àû¿ë (Material ¼³Á¤¿¡ color º¯¼ö ¹İ¿µ)
-    GLfloat matDiffuse[] = { color.r, color.g, color.b, 1.0f };
-    GLfloat matSpecular[] = { 1.0f, 1.0f, 1.0f, 1.0f }; // °­ÇÑ Èò»ö ¹İ»ç±¤
-    GLfloat matShininess[] = { 100.0f };                // Á¼°í ¼±¸íÇÑ ÇÏÀÌ¶óÀÌÆ®
-    // Ambient¸¦ ³ô¿©¼­ ÅØ½ºÃ³°¡ ¾îµÎ¿öµµ »öÀÌ Àß µå·¯³ª°Ô ÇÔ
-    GLfloat matAmbient[] = { color.r * 0.4f, color.g * 0.4f, color.b * 0.4f, 1.0f };
+    GLfloat matColor[4];
+    GLfloat matAmbient[4];
+    if (currentTexture != 0) {
+        matColor[0] = matColor[1] = matColor[2] = 1.0f;
+        matColor[3] = 1.0f;
+        matAmbient[0] = matAmbient[1] = matAmbient[2] = 0.5f;
+        matAmbient[3] = 1.0f;
+    }
+    else {
+        switch (ballType) {
+        case 0:
+            matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
+            break;
+        case 1:
+            matColor[0] = 0.1f; matColor[1] = 0.3f; matColor[2] = 0.9f; matColor[3] = 1.0f;
+            break;
+        case 2:
+            matColor[0] = 0.1f; matColor[1] = 0.8f; matColor[2] = 0.2f; matColor[3] = 1.0f;
+            break;
+        default:
+            matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
+            break;
+        }
+        matAmbient[0] = matColor[0] * 0.3f;
+        matAmbient[1] = matColor[1] * 0.3f;
+        matAmbient[2] = matColor[2] * 0.3f;
+        matAmbient[3] = 1.0f;
+    }
+    GLfloat matSpecular[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+    GLfloat matShininess[] = { 100.0f };
 
     glMaterialfv(GL_FRONT, GL_AMBIENT, matAmbient);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, matDiffuse);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, matColor);
     glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
-    // ÅØ½ºÃ³°¡ ÀÖÀ¸¸é Àû¿ëÇÏµÇ, »ö»ó(Color)°ú È¥ÇÕµÇµµ·Ï ¼³Á¤
-    if (textureID > 0) {
-        glEnable(GL_TEXTURE_2D);
-        glBindTexture(GL_TEXTURE_2D, textureID);
-        // ÅØ½ºÃ³°¡ ÀÖ¾îµµ ±âº» »ö»óÀÌ ¹¯¾î³ª¿Àµµ·Ï Èò»ö(Modulate) ¼³Á¤
-        glColor3f(1.0f, 1.0f, 1.0f);
+    glEnable(GL_TEXTURE_2D);
+    if (currentTexture != 0) {
+        Texture::Bind(currentTexture, 0);
     }
-    else {
-        // ÅØ½ºÃ³°¡ ¾øÀ¸¸é ¼ø¼ö »ö»ó »ç¿ë
-        glDisable(GL_TEXTURE_2D);
-        glColor3f(color.r, color.g, color.b);
-    }
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-    // ±¸ ±×¸®±â
     GLUquadric* quad = gluNewQuadric();
     gluQuadricTexture(quad, GL_TRUE);
-    gluQuadricNormals(quad, GLU_SMOOTH);
-    gluSphere(quad, radius, 32, 32);
-    gluDeleteQuadric(quad);
 
-    if (textureID > 0) {
-        glDisable(GL_TEXTURE_2D);
+    gluSphere(quad, radius, 32, 32);
+
+    gluDeleteQuadric(quad);
+    if (currentTexture != 0) {
+        Texture::Unbind();
     }
+    glDisable(GL_TEXTURE_2D);
 
     glPopMatrix();
+    glEnable(GL_COLOR_MATERIAL);
 }
 
-// [Ãß°¡] ±×¸²ÀÚ ±×¸®±â ±¸Çö
+// [2ë²ˆ ì¶”ê°€] ê·¸ë¦¼ì ê·¸ë¦¬ê¸° í•¨ìˆ˜
 void Ball::DrawShadow(vec3 lightPos) {
-    // 1. Á¶¸í°ú ÅØ½ºÃ³ ²ô±â (±×¸²ÀÚ´Â ±î¸¸»öÀÌ¾î¾ß ÇÔ)
+    // 1. ì¡°ëª…ê³¼ í…ìŠ¤ì²˜ ë„ê¸° (ê·¸ë¦¼ìëŠ” ë‹¨ìƒ‰ì´ì–´ì•¼ í•¨)
     glDisable(GL_LIGHTING);
     glDisable(GL_TEXTURE_2D);
 
     glPushMatrix();
 
-    // 2. ±×¸²ÀÚ Çà·Ä »ı¼º ¹× Àû¿ë
+    // 2. ê·¸ë¦¼ì íˆ¬ì˜ í–‰ë ¬ ìƒì„±
     GLfloat shadowMat[16];
 
-    // ¹Ù´Ú Æò¸é: y = 0.001
+    // ë°”ë‹¥ í‰ë©´:  y = 0.001
     glm::vec4 groundPlane(0.0f, 1.0f, 0.0f, -0.001f);
     glm::vec4 lightPos4(lightPos.x, lightPos.y, lightPos.z, 1.0f);
 
-    // Common.h¿¡ Ãß°¡ÇÑ ÇÔ¼ö È£Ãâ
+    // Common. hì— ì¶”ê°€ëœ í•¨ìˆ˜ í˜¸ì¶œ
     MakeShadowMatrix(shadowMat, lightPos4, groundPlane);
 
-    // Çà·ÄÀ» ÇöÀç ¸ğµ¨ºä Çà·Ä¿¡ °öÇÔ
+    // ê·¸ë¦¼ì íˆ¬ì˜ ëª¨ë¸ë·° í–‰ë ¬ì— ê³±í•˜ê¸°
     glMultMatrixf(shadowMat);
 
-    // 3. °øÀ» ¿ø·¡ À§Ä¡¿¡ ±×¸®±â (³³ÀÛÇÏ°Ô º¯È¯µÊ)
+    // 3. ì‹¤ì œ ê³µì˜ ìœ„ì¹˜ë¡œ ê·¸ë¦¼ì (ë³€í™˜ì€ ì´ë¯¸ ì ìš©ë¨)
     glTranslatef(position.x, position.y, position.z);
     glRotatef(rotationAngle, rotationAxis.x, rotationAxis.y, rotationAxis.z);
 
-    // 4. Â£Àº È¸»öÀ¸·Î ¼³Á¤
+    // 4. ì§™ì€ íšŒìƒ‰ìœ¼ë¡œ ë Œë”ë§
     glColor3f(0.15f, 0.15f, 0.15f);
 
-    // °ø ¸ğµ¨ ±×¸®±â
+    // ê³µ ëª¨ì–‘ ê·¸ë¦¬ê¸°
     GLUquadric* quad = gluNewQuadric();
     gluSphere(quad, radius, 32, 32);
     gluDeleteQuadric(quad);
 
     glPopMatrix();
 
-    // 5. »óÅÂ º¹±¸
+    // 5. ë³µì› ì›ë³µ
     glEnable(GL_LIGHTING);
-    glColor3f(1.0f, 1.0f, 1.0f); // ±âº» »ö»ó º¹±¸
+    glColor3f(1.0f, 1.0f, 1.0f); // ê¸°ë³¸ ìƒ‰ìƒ ë³µì›
 }
 
 void Ball::SetBallType(int type) {
-    ballType = type % 3;  // 0, 1, 2 ¼øÈ¯
-
-    // [¼öÁ¤ Æ÷ÀÎÆ® 1] »ö»ó °ªÀ» ¸íÈ®ÇÏ°Ô Àç¼³Á¤
-    switch (ballType) {
-    case 0:  // »¡°£ °ø
-        color = vec3(0.9f, 0.1f, 0.1f);
-        break;
-    case 1:  // ÆÄ¶õ °ø
-        color = vec3(0.1f, 0.3f, 0.9f);
-        break;
-    case 2:  // ³ì»ö °ø
-        color = vec3(0.1f, 0.8f, 0.2f);
-        break;
-    }
-}
-
-bool Ball::IsStopped() {
-    return !isRolling || length(velocity) < 0.05f;
+    if (type < 0) type = 0;
+    if (type > 2) type = 2;
+    ballType = type;
+    currentTexture = textures[type];
 }

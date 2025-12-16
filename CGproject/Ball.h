@@ -3,61 +3,61 @@
 
 class Ball {
 public:
-    // ¹°¸® ¼Ó¼º
     vec3 position;
     vec3 velocity;
-    vec3 angularVelocity;   // ½ºÇÉ (°¢¼Óµµ)
+    vec3 angularVelocity;
+
     float radius;
     float mass;
 
-    // È¸Àü »óÅÂ (·»´õ¸µ¿ë)
     float rotationAngle;
     vec3 rotationAxis;
 
-    // ½ºÇÉ Å¸ÀÔ
     SpinType spinType;
-
-    // »óÅÂ
     bool isRolling;
     bool isInGutter;
-    float rollTime;         // ±¼¸° ÈÄ °æ°ú ½Ã°£
-    float startX;           // ½ÃÀÛ X À§Ä¡
+    int  ballType;
 
-    // ÅØ½ºÃ³/»ö»ó
-    GLuint textureID;
-    vec3 color;
-    int ballType;   // °ø Á¾·ù (0, 1, 2...)
+    // Hook Path (ì•ˆì •í˜• S-curve)
+    float rollTime;
+    float totalTime;
+    bool  useSpline;
+    float splineSpeed;
 
-    // »ı¼ºÀÚ
+    float pathStartX, pathEndX;
+    float pathStartZ, pathEndZ;
+    float pathAmp;
+
     Ball();
 
-    // ÃÊ±âÈ­ (»õ ÇÁ·¹ÀÓ ½ÃÀÛ)
+    void Reset();
     void Reset(float startX);
 
-    // ¹°¸® ¾÷µ¥ÀÌÆ®
+    void Launch(float power, SpinType spin);
     void Update(float dt);
 
-    // °ø ¹ß»ç
-    void Launch(float power, SpinType spin);
-
-    // ½ºÇÉ È¿°ú Àû¿ë (¸¶±×´©½º È¿°ú)
-    void ApplySpinEffect(float dt);
-
-    // °ÅÅÍ Ã¼Å©
+    void ApplyFriction(float dt);
     void CheckGutter();
 
-    // ·¹ÀÎ ¸¶Âû Àû¿ë
-    void ApplyFriction(float dt);
+    // (í˜¸í™˜ìš©)
+    vec3 EvaluateCardinalSpline(const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float t);
 
-    // ·»´õ¸µ
+    // ê³ ì • ê²½ë¡œ
+    void SetupSpline(float baseSpeed, SpinType spin);
+    vec3 EvaluateSpline(float t); // 0..1
+
     void Draw();
-
-    // [Ãß°¡] ±×¸²ÀÚ ±×¸®±â (±¤¿ø À§Ä¡ ÇÊ¿ä)
-    void DrawShadow(vec3 lightPos);
-
-    // °ø Á¾·ù º¯°æ
+    void DrawShadow(vec3 lightPos);  // [ì¶”ê°€] ê·¸ë¦¼ì ë Œë”ë§ í•¨ìˆ˜
     void SetBallType(int type);
 
-    // Á¤Áö ¿©ºÎ
     bool IsStopped();
+
+    // --- í…ìŠ¤ì²˜ ê´€ë ¨ ---
+    // ì—¬ëŸ¬ ìƒ‰ìƒì˜ ê³µì„ ìœ„í•´ 3ê°œì˜ í…ìŠ¤ì²˜ë¥¼ ë¡œë“œí•œë‹¤. ë©”ë‰´ì—ì„œ ì„ íƒëœ íƒ€ì…ì— ë”°ë¼ ë‹¤ë¥¸ í…ìŠ¤ì²˜ë¥¼ ì‚¬ìš©í•œë‹¤.
+    // textures[0] â†’ ball.jpg, textures[1] â†’ ball1.jpg, textures[2] â†’ ball2.jpg
+    static GLuint textures[3];
+    // í˜„ì¬ ë Œë”ë§ì— ì‚¬ìš©í•  í…ìŠ¤ì²˜ ID. SetBallType()ì—ì„œ ì—…ë°ì´íŠ¸ëœë‹¤.
+    static GLuint currentTexture;
+    // í…ìŠ¤ì²˜ ë¡œë”© í•¨ìˆ˜: Game::Init()ì—ì„œ í˜¸ì¶œí•˜ì—¬ textures/ball.jpg, ball1.jpg, ball2.jpgë¥¼ ì½ëŠ”ë‹¤. 
+    static void LoadTextures();
 };

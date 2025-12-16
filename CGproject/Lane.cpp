@@ -1,7 +1,7 @@
 #include "Lane.h"
 
 Lane::Lane() {
-    // ÃÊ±â ÀÎµ¦½º´Â 0¹ø(Ã¹ ¹øÂ° »çÁø)
+    // ì´ˆê¸° ì¸ë±ìŠ¤ëŠ” 0ë²ˆ(ì²« ë²ˆì§¸ í…ìŠ¤ì²˜)
     currentLaneIndex = 0;
     currentWallIndex = 0;
     currentCeilingIndex = 0;
@@ -13,31 +13,57 @@ Lane::Lane() {
 }
 
 void Lane::Init() {
-    // °¢ ±¸¿ªº°·Î 3Àå¾¿ ÅØ½ºÃ³¸¦ ·ÎµåÇÑ´Ù°í °¡Á¤ (1.jpg ~ 3.jpg)
-    // ÆÄÀÏÀÌ ¾øÀ¸¸é Texture::Load ³»ºÎ¿¡¼­ ¿¡·¯ ¸Ş½ÃÁö¸¦ ¶ç¿ì°í °ËÀº»ö ÅØ½ºÃ³°¡ µÊ
+    // ê° ì¹´í…Œê³ ë¦¬ë³„ í…ìŠ¤ì²˜ ë¡œë”© (1.jpg ~ 5.jpg)
+    // ë§Œì•½ íŒŒì¼ì´ ì—†ìœ¼ë©´ Texture::Load ë‚´ë¶€ì—ì„œ ì˜¤ë¥˜ ë©”ì‹œì§€ë¥¼ ë‚´ê³  0ì„ ë°˜í™˜
     for (int i = 1; i <= 5; i++) {
         string num = to_string(i);
 
-        // Lane ÅØ½ºÃ³ ·Îµå
+        // Lane í…ìŠ¤ì²˜ ë¡œë“œ
         string lanePath = "Textures/Lane/" + num + ".jpg";
-        laneTextures.push_back(Texture::Load(lanePath.c_str()));
+        GLuint laneTex = Texture::Load(lanePath.c_str());
+        if (laneTex != 0) {
+            laneTextures.push_back(laneTex);
+        }
 
-        // Wall ÅØ½ºÃ³ ·Îµå
+        // Wall í…ìŠ¤ì²˜ ë¡œë“œ
         string wallPath = "Textures/Wall/" + num + ".jpg";
-        wallTextures.push_back(Texture::Load(wallPath.c_str()));
+        GLuint wallTex = Texture::Load(wallPath.c_str());
+        if (wallTex != 0) {
+            wallTextures.push_back(wallTex);
+        }
 
-        // Ceiling ÅØ½ºÃ³ ·Îµå
+        // Ceiling í…ìŠ¤ì²˜ ë¡œë“œ
         string ceilingPath = "Textures/Ceiling/" + num + ".jpg";
-        ceilingTextures.push_back(Texture::Load(ceilingPath.c_str()));
+        GLuint ceilingTex = Texture::Load(ceilingPath.c_str());
+        if (ceilingTex != 0) {
+            ceilingTextures.push_back(ceilingTex);
+        }
 
-        // Floor ÅØ½ºÃ³ ·Îµå
+        // Floor í…ìŠ¤ì²˜ ë¡œë“œ
         string floorPath = "Textures/Floor/" + num + ".jpg";
-        floorTextures.push_back(Texture::Load(floorPath.c_str()));
+        GLuint floorTex = Texture::Load(floorPath.c_str());
+        if (floorTex != 0) {
+            floorTextures.push_back(floorTex);
+        }
+    }
+
+    // í…ìŠ¤ì²˜ ë¡œë”© ì‹¤íŒ¨ ì‹œ ë²¡í„°ê°€ ë¹„ì–´ìˆì„ ìˆ˜ ìˆìœ¼ë¯€ë¡œ ì¸ë±ìŠ¤ ì²´í¬ í•„ìš”
+    if (!laneTextures.empty() && currentLaneIndex >= laneTextures.size()) {
+        currentLaneIndex = 0;
+    }
+    if (!wallTextures.empty() && currentWallIndex >= wallTextures.size()) {
+        currentWallIndex = 0;
+    }
+    if (!ceilingTextures.empty() && currentCeilingIndex >= ceilingTextures.size()) {
+        currentCeilingIndex = 0;
+    }
+    if (!floorTextures.empty() && currentFloorIndex >= floorTextures.size()) {
+        currentFloorIndex = 0;
     }
 }
 
 void Lane::Draw() {
-    // Á¶¸í ¼³Á¤ (±âÁ¸°ú µ¿ÀÏ)
+    // ì¡°ëª… ì„¤ì • (1ë²ˆ, 2ë²ˆ ê³µí†µ)
     GLfloat lightPos[] = { lightPosition.x, lightPosition.y, lightPosition.z, 1.0f };
     GLfloat lightAmbient[] = { 0.3f, 0.3f, 0.3f, 1.0f };
     GLfloat lightDiffuse[] = { 0.8f, 0.8f, 0.8f, 1.0f };
@@ -48,6 +74,7 @@ void Lane::Draw() {
     glLightfv(GL_LIGHT0, GL_DIFFUSE, lightDiffuse);
     glLightfv(GL_LIGHT0, GL_SPECULAR, lightSpecular);
 
+    // í…ìŠ¤ì²˜ í™˜ê²½ ëª¨ë“œ ì„¤ì •
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     DrawLaneSurface();
@@ -58,8 +85,8 @@ void Lane::Draw() {
 }
 
 void Lane::DrawLaneSurface() {
-    if (laneTextures.empty()) return;
-
+    // 2ë²ˆ ì½”ë“œ ê¸°ë°˜ - í…ìŠ¤ì²˜ ì‹œìŠ¤í…œ ì‚¬ìš©
+    // 1ë²ˆì˜ ìŠ¤í™í˜ëŸ¬ ì„¤ì • í†µí•©
     GLfloat matWhite[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     GLfloat matSpecular[] = { 0.4f, 0.4f, 0.4f, 1.0f };
     GLfloat matShininess[] = { 30.0f };
@@ -69,26 +96,116 @@ void Lane::DrawLaneSurface() {
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
     float halfWidth = LANE_WIDTH / 2.0f;
-    float repeatV = 10.0f;
+    float repeatV = 10.0f; // í…ìŠ¤ì²˜ ë°˜ë³µ (ì„¸ë¡œ ë°©í–¥)
 
-    glEnable(GL_TEXTURE_2D);
-    // [º¯°æ] ÇöÀç ÀÎµ¦½ºÀÇ ÅØ½ºÃ³ ¹ÙÀÎµù
-    glBindTexture(GL_TEXTURE_2D, laneTextures[currentLaneIndex]);
+    // í…ìŠ¤ì²˜ê°€ ë¡œë“œëœ ê²½ìš°ì—ë§Œ ì ìš©
+    if (!laneTextures.empty() && currentLaneIndex >= 0 && currentLaneIndex < laneTextures.size()) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, laneTextures[currentLaneIndex]);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, 1.0f, 0.0f);
+        glTexCoord2f(0.0f, 0.0f); glVertex3f(-halfWidth, 0.0f, 3.0f);
+        glTexCoord2f(1.0f, 0.0f); glVertex3f(halfWidth, 0.0f, 3.0f);
+        glTexCoord2f(1.0f, repeatV); glVertex3f(halfWidth, 0.0f, -LANE_LENGTH);
+        glTexCoord2f(0.0f, repeatV); glVertex3f(-halfWidth, 0.0f, -LANE_LENGTH);
+        glEnd();
+
+        glDisable(GL_TEXTURE_2D);
+    }
+    else {
+        // í…ìŠ¤ì²˜ê°€ ì—†ì„ ë•Œ - 1ë²ˆ ì½”ë“œì˜ í´ë°± (íŒì ë¬´ëŠ¬)
+        GLfloat matWood[] = { 0.7f, 0.5f, 0.3f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matWood);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, 1.0f, 0.0f);
+        glVertex3f(-halfWidth, 0.0f, 3.0f);
+        glVertex3f(halfWidth, 0.0f, 3.0f);
+        glVertex3f(halfWidth, 0.0f, -LANE_LENGTH);
+        glVertex3f(-halfWidth, 0.0f, -LANE_LENGTH);
+        glEnd();
+
+        // ë ˆì¸ íŒì ì¤„ë¬´ëŠ¬
+        GLfloat matStripe[] = { 0.6f, 0.45f, 0.3f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matStripe);
+        glBegin(GL_LINES);
+        float stripeSpacing = 0.1f;
+        for (float x = -halfWidth; x <= halfWidth; x += stripeSpacing) {
+            glVertex3f(x, 0.002f, 3.0f);
+            glVertex3f(x, 0.002f, -LANE_LENGTH);
+        }
+        glEnd();
+    }
+}
+
+void Lane::DrawGutters() {
+    // 1ë²ˆ ì½”ë“œ ê¸°ë°˜ - ê±°í„° ê·¸ë¦¬ê¸°
+    GLfloat matGutter[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matGutter);
+
+    float laneEdge = LANE_WIDTH / 2.0f;
+    float gutterOuter = laneEdge + GUTTER_WIDTH;
+    float gutterDepth = -0.05f;
+
+    // ì™¼ìª½ ê±°í„°
+    glBegin(GL_QUADS);
+
+    // ë°”ë‹¥
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(-gutterOuter, gutterDepth, 0.0f);
+    glVertex3f(-laneEdge, gutterDepth, 0.0f);
+    glVertex3f(-laneEdge, gutterDepth, -LANE_LENGTH);
+    glVertex3f(-gutterOuter, gutterDepth, -LANE_LENGTH);
+
+    // ì•ˆìª½ ë²½
+    glNormal3f(-1.0f, 0.0f, 0.0f);
+    glVertex3f(-laneEdge, 0.0f, 0.0f);
+    glVertex3f(-laneEdge, gutterDepth, 0.0f);
+    glVertex3f(-laneEdge, gutterDepth, -LANE_LENGTH);
+    glVertex3f(-laneEdge, 0.0f, -LANE_LENGTH);
+
+    glEnd();
+
+    // ì˜¤ë¥¸ìª½ ê±°í„°
+    glBegin(GL_QUADS);
+
+    // ë°”ë‹¥
+    glNormal3f(0.0f, 1.0f, 0.0f);
+    glVertex3f(laneEdge, gutterDepth, 0.0f);
+    glVertex3f(gutterOuter, gutterDepth, 0.0f);
+    glVertex3f(gutterOuter, gutterDepth, -LANE_LENGTH);
+    glVertex3f(laneEdge, gutterDepth, -LANE_LENGTH);
+
+    // ì•ˆìª½ ë²½
+    glNormal3f(1.0f, 0.0f, 0.0f);
+    glVertex3f(laneEdge, 0.0f, 0.0f);
+    glVertex3f(laneEdge, 0.0f, -LANE_LENGTH);
+    glVertex3f(laneEdge, gutterDepth, -LANE_LENGTH);
+    glVertex3f(laneEdge, gutterDepth, 0.0f);
+
+    glEnd();
+}
+
+void Lane::DrawFoulLine() {
+    // 1ë²ˆ ì½”ë“œ ê¸°ë°˜ - íŒŒìš¸ë¼ì¸
+    GLfloat matFoul[] = { 0.1f, 0.1f, 0.1f, 1.0f };
+    glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matFoul);
+
+    float halfWidth = LANE_WIDTH / 2.0f + GUTTER_WIDTH;
+    float lineWidth = 0.03f;
 
     glBegin(GL_QUADS);
     glNormal3f(0.0f, 1.0f, 0.0f);
-    glTexCoord2f(0.0f, 0.0f); glVertex3f(-halfWidth, 0.0f, 3.0f);
-    glTexCoord2f(1.0f, 0.0f); glVertex3f(halfWidth, 0.0f, 3.0f);
-    glTexCoord2f(1.0f, repeatV); glVertex3f(halfWidth, 0.0f, -LANE_LENGTH);
-    glTexCoord2f(0.0f, repeatV); glVertex3f(-halfWidth, 0.0f, -LANE_LENGTH);
+    glVertex3f(-halfWidth, 0.003f, FOUL_LINE_Z + lineWidth);
+    glVertex3f(halfWidth, 0.003f, FOUL_LINE_Z + lineWidth);
+    glVertex3f(halfWidth, 0.003f, FOUL_LINE_Z - lineWidth);
+    glVertex3f(-halfWidth, 0.003f, FOUL_LINE_Z - lineWidth);
     glEnd();
-
-    glDisable(GL_TEXTURE_2D);
 }
 
 void Lane::DrawEnvironment() {
-    if (wallTextures.empty() || ceilingTextures.empty() || floorTextures.empty()) return;
-
+    // 2ë²ˆ ì½”ë“œ ê¸°ë°˜ - ë²½, ì²œì¥, ë°”ë‹¥ í…ìŠ¤ì²˜ ì‹œìŠ¤í…œ
     GLfloat matWhite[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matWhite);
 
@@ -98,73 +215,140 @@ void Lane::DrawEnvironment() {
     float endZ = -LANE_LENGTH - 2.0f;
     float repeatX = 5.0f;
     float repeatZ = 5.0f;
-
-    glEnable(GL_TEXTURE_2D);
-
-    // ============ º® (Walls) ============
-    // [º¯°æ] ÇöÀç ÀÎµ¦½ºÀÇ º® ÅØ½ºÃ³ ¹ÙÀÎµù
-    glBindTexture(GL_TEXTURE_2D, wallTextures[currentWallIndex]);
-
-    glBegin(GL_QUADS);
-    // ¿ŞÂÊ º®
-    glNormal3f(1.0f, 0.0f, 0.0f);
-    glTexCoord2f(0.0f, 0.0f);    glVertex3f(-wallDist, 0.0f, startZ);
-    glTexCoord2f(repeatZ, 0.0f); glVertex3f(-wallDist, 0.0f, endZ);
-    glTexCoord2f(repeatZ, 1.0f); glVertex3f(-wallDist, wallHeight, endZ);
-    glTexCoord2f(0.0f, 1.0f);    glVertex3f(-wallDist, wallHeight, startZ);
-
-    // ¿À¸¥ÂÊ º®
-    glNormal3f(-1.0f, 0.0f, 0.0f);
-    glTexCoord2f(0.0f, 0.0f);    glVertex3f(wallDist, 0.0f, endZ);
-    glTexCoord2f(repeatZ, 0.0f); glVertex3f(wallDist, 0.0f, startZ);
-    glTexCoord2f(repeatZ, 1.0f); glVertex3f(wallDist, wallHeight, startZ);
-    glTexCoord2f(0.0f, 1.0f);    glVertex3f(wallDist, wallHeight, endZ);
-
-    // µÚÂÊ º®
-    glNormal3f(0.0f, 0.0f, -1.0f);
-    glTexCoord2f(0.0f, 0.0f);    glVertex3f(-wallDist, 0.0f, startZ);
-    glTexCoord2f(repeatX, 0.0f); glVertex3f(wallDist, 0.0f, startZ);
-    glTexCoord2f(repeatX, 1.0f); glVertex3f(wallDist, wallHeight, startZ);
-    glTexCoord2f(0.0f, 1.0f);    glVertex3f(-wallDist, wallHeight, startZ);
-    glEnd();
-
-    // ============ ÃµÀå (Ceiling) ============
-    // [º¯°æ] ÇöÀç ÀÎµ¦½ºÀÇ ÃµÀå ÅØ½ºÃ³ ¹ÙÀÎµù
-    glBindTexture(GL_TEXTURE_2D, ceilingTextures[currentCeilingIndex]);
-
-    glBegin(GL_QUADS);
-    glNormal3f(0.0f, -1.0f, 0.0f);
-    glTexCoord2f(0.0f, 0.0f);        glVertex3f(-wallDist, wallHeight, startZ);
-    glTexCoord2f(repeatX, 0.0f);     glVertex3f(wallDist, wallHeight, startZ);
-    glTexCoord2f(repeatX, repeatZ);  glVertex3f(wallDist, wallHeight, endZ);
-    glTexCoord2f(0.0f, repeatZ);     glVertex3f(-wallDist, wallHeight, endZ);
-    glEnd();
-
-    // ============ ¹Ù´Ú (Floor) ============
-    // [º¯°æ] ÇöÀç ÀÎµ¦½ºÀÇ ¹Ù´Ú ÅØ½ºÃ³ ¹ÙÀÎµù
-    glBindTexture(GL_TEXTURE_2D, floorTextures[currentFloorIndex]);
     float gutterOuter = LANE_WIDTH / 2.0f + GUTTER_WIDTH;
 
-    glBegin(GL_QUADS);
-    glNormal3f(0.0f, 1.0f, 0.0f);
-    // ¿ŞÂÊ ¹Ù´Ú
-    glTexCoord2f(0.0f, 0.0f);        glVertex3f(-wallDist, 0.0f, startZ);
-    glTexCoord2f(repeatX / 2, 0.0f);   glVertex3f(-gutterOuter, 0.0f, startZ);
-    glTexCoord2f(repeatX / 2, repeatZ); glVertex3f(-gutterOuter, 0.0f, endZ);
-    glTexCoord2f(0.0f, repeatZ);     glVertex3f(-wallDist, 0.0f, endZ);
-    // ¿À¸¥ÂÊ ¹Ù´Ú
-    glTexCoord2f(0.0f, 0.0f);        glVertex3f(gutterOuter, 0.0f, startZ);
-    glTexCoord2f(repeatX / 2, 0.0f);   glVertex3f(wallDist, 0.0f, startZ);
-    glTexCoord2f(repeatX / 2, repeatZ); glVertex3f(wallDist, 0.0f, endZ);
-    glTexCoord2f(0.0f, repeatZ);     glVertex3f(gutterOuter, 0.0f, endZ);
-    glEnd();
+    // ============ ë²½ (Walls) ============
+    if (!wallTextures.empty() && currentWallIndex >= 0 && currentWallIndex < wallTextures.size()) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, wallTextures[currentWallIndex]);
 
-    glDisable(GL_TEXTURE_2D);
+        glBegin(GL_QUADS);
+        // ì™¼ìª½ ë²½
+        glNormal3f(1.0f, 0.0f, 0.0f);
+        glTexCoord2f(0.0f, 0.0f);    glVertex3f(-wallDist, 0.0f, startZ);
+        glTexCoord2f(repeatZ, 0.0f); glVertex3f(-wallDist, 0.0f, endZ);
+        glTexCoord2f(repeatZ, 1.0f); glVertex3f(-wallDist, wallHeight, endZ);
+        glTexCoord2f(0.0f, 1.0f);    glVertex3f(-wallDist, wallHeight, startZ);
+
+        // ì˜¤ë¥¸ìª½ ë²½
+        glNormal3f(-1.0f, 0.0f, 0.0f);
+        glTexCoord2f(0.0f, 0.0f);    glVertex3f(wallDist, 0.0f, endZ);
+        glTexCoord2f(repeatZ, 0.0f); glVertex3f(wallDist, 0.0f, startZ);
+        glTexCoord2f(repeatZ, 1.0f); glVertex3f(wallDist, wallHeight, startZ);
+        glTexCoord2f(0.0f, 1.0f);    glVertex3f(wallDist, wallHeight, endZ);
+
+        // ë’¤ìª½ ë²½
+        glNormal3f(0.0f, 0.0f, -1.0f);
+        glTexCoord2f(0.0f, 0.0f);    glVertex3f(-wallDist, 0.0f, startZ);
+        glTexCoord2f(repeatX, 0.0f); glVertex3f(wallDist, 0.0f, startZ);
+        glTexCoord2f(repeatX, 1.0f); glVertex3f(wallDist, wallHeight, startZ);
+        glTexCoord2f(0.0f, 1.0f);    glVertex3f(-wallDist, wallHeight, startZ);
+        glEnd();
+
+        glDisable(GL_TEXTURE_2D);
+    }
+    else {
+        // í…ìŠ¤ì²˜ ì—†ì„ ë•Œ - ê¸°ë³¸ ìƒ‰ìƒ
+        GLfloat matWall[] = { 0.5f, 0.5f, 0.6f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matWall);
+
+        glBegin(GL_QUADS);
+        // ì™¼ìª½ ë²½
+        glNormal3f(1.0f, 0.0f, 0.0f);
+        glVertex3f(-wallDist, 0.0f, startZ);
+        glVertex3f(-wallDist, 0.0f, endZ);
+        glVertex3f(-wallDist, wallHeight, endZ);
+        glVertex3f(-wallDist, wallHeight, startZ);
+
+        // ì˜¤ë¥¸ìª½ ë²½
+        glNormal3f(-1.0f, 0.0f, 0.0f);
+        glVertex3f(wallDist, 0.0f, endZ);
+        glVertex3f(wallDist, 0.0f, startZ);
+        glVertex3f(wallDist, wallHeight, startZ);
+        glVertex3f(wallDist, wallHeight, endZ);
+
+        // ë’¤ìª½ ë²½
+        glNormal3f(0.0f, 0.0f, -1.0f);
+        glVertex3f(-wallDist, 0.0f, startZ);
+        glVertex3f(wallDist, 0.0f, startZ);
+        glVertex3f(wallDist, wallHeight, startZ);
+        glVertex3f(-wallDist, wallHeight, startZ);
+        glEnd();
+    }
+
+    // ============ ì²œì¥ (Ceiling) ============
+    if (!ceilingTextures.empty() && currentCeilingIndex >= 0 && currentCeilingIndex < ceilingTextures.size()) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, ceilingTextures[currentCeilingIndex]);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, -1.0f, 0.0f);
+        glTexCoord2f(0.0f, 0.0f);        glVertex3f(-wallDist, wallHeight, startZ);
+        glTexCoord2f(repeatX, 0.0f);     glVertex3f(wallDist, wallHeight, startZ);
+        glTexCoord2f(repeatX, repeatZ);  glVertex3f(wallDist, wallHeight, endZ);
+        glTexCoord2f(0.0f, repeatZ);     glVertex3f(-wallDist, wallHeight, endZ);
+        glEnd();
+
+        glDisable(GL_TEXTURE_2D);
+    }
+    else {
+        // í…ìŠ¤ì²˜ ì—†ì„ ë•Œ - ê¸°ë³¸ ìƒ‰ìƒ
+        GLfloat matCeiling[] = { 0.7f, 0.7f, 0.7f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matCeiling);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, -1.0f, 0.0f);
+        glVertex3f(-wallDist, wallHeight, startZ);
+        glVertex3f(wallDist, wallHeight, startZ);
+        glVertex3f(wallDist, wallHeight, endZ);
+        glVertex3f(-wallDist, wallHeight, endZ);
+        glEnd();
+    }
+
+    // ============ ë°”ë‹¥ (Floor - ë ˆì¸ ì™¸ê³½) ============
+    if (!floorTextures.empty() && currentFloorIndex >= 0 && currentFloorIndex < floorTextures.size()) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, floorTextures[currentFloorIndex]);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, 1.0f, 0.0f);
+        // ì™¼ìª½ ë°”ë‹¥
+        glTexCoord2f(0.0f, 0.0f);        glVertex3f(-wallDist, 0.0f, startZ);
+        glTexCoord2f(repeatX / 2, 0.0f);   glVertex3f(-gutterOuter, 0.0f, startZ);
+        glTexCoord2f(repeatX / 2, repeatZ); glVertex3f(-gutterOuter, 0.0f, endZ);
+        glTexCoord2f(0.0f, repeatZ);     glVertex3f(-wallDist, 0.0f, endZ);
+        // ì˜¤ë¥¸ìª½ ë°”ë‹¥
+        glTexCoord2f(0.0f, 0.0f);        glVertex3f(gutterOuter, 0.0f, startZ);
+        glTexCoord2f(repeatX / 2, 0.0f);   glVertex3f(wallDist, 0.0f, startZ);
+        glTexCoord2f(repeatX / 2, repeatZ); glVertex3f(wallDist, 0.0f, endZ);
+        glTexCoord2f(0.0f, repeatZ);     glVertex3f(gutterOuter, 0.0f, endZ);
+        glEnd();
+
+        glDisable(GL_TEXTURE_2D);
+    }
+    else {
+        // í…ìŠ¤ì²˜ ì—†ì„ ë•Œ - ê¸°ë³¸ ìƒ‰ìƒ
+        GLfloat matFloor[] = { 0.3f, 0.3f, 0.35f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matFloor);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, 1.0f, 0.0f);
+        // ì™¼ìª½ ë°”ë‹¥
+        glVertex3f(-wallDist, 0.0f, startZ);
+        glVertex3f(-gutterOuter, 0.0f, startZ);
+        glVertex3f(-gutterOuter, 0.0f, endZ);
+        glVertex3f(-wallDist, 0.0f, endZ);
+        // ì˜¤ë¥¸ìª½ ë°”ë‹¥
+        glVertex3f(gutterOuter, 0.0f, startZ);
+        glVertex3f(wallDist, 0.0f, startZ);
+        glVertex3f(wallDist, 0.0f, endZ);
+        glVertex3f(gutterOuter, 0.0f, endZ);
+        glEnd();
+    }
 }
 
 void Lane::DrawPinArea() {
-    if (wallTextures.empty()) return;
-
+    // 2ë²ˆ ì½”ë“œ ê¸°ë°˜ - í•€ ì˜ì—­ ë’¤ìª½ ë²½ (í…ìŠ¤ì²˜ ì ìš©)
     GLfloat matWhite[] = { 1.0f, 1.0f, 1.0f, 1.0f };
     glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matWhite);
 
@@ -172,35 +356,56 @@ void Lane::DrawPinArea() {
     float wallHeight = 3.0f;
     float repeatX = 5.0f;
 
-    glEnable(GL_TEXTURE_2D);
-    // [º¯°æ] º® ÅØ½ºÃ³ °øÀ¯
-    glBindTexture(GL_TEXTURE_2D, wallTextures[currentWallIndex]);
+    if (!wallTextures.empty() && currentWallIndex >= 0 && currentWallIndex < wallTextures.size()) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, wallTextures[currentWallIndex]);
 
-    glBegin(GL_QUADS);
-    glNormal3f(0.0f, 0.0f, 1.0f);
-    glTexCoord2f(repeatX, 0.0f); glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 1.0f);
-    glTexCoord2f(0.0f, 0.0f);    glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 1.0f);
-    glTexCoord2f(0.0f, 1.0f);    glVertex3f(wallDist, wallHeight, -LANE_LENGTH - 1.0f);
-    glTexCoord2f(repeatX, 1.0f); glVertex3f(-wallDist, wallHeight, -LANE_LENGTH - 1.0f);
-    glEnd();
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, 0.0f, 1.0f);
+        glTexCoord2f(repeatX, 0.0f); glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 1.0f);
+        glTexCoord2f(0.0f, 0.0f);    glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 1.0f);
+        glTexCoord2f(0.0f, 1.0f);    glVertex3f(wallDist, wallHeight, -LANE_LENGTH - 1.0f);
+        glTexCoord2f(repeatX, 1.0f); glVertex3f(-wallDist, wallHeight, -LANE_LENGTH - 1.0f);
+        glEnd();
 
-    glDisable(GL_TEXTURE_2D);
+        glDisable(GL_TEXTURE_2D);
+    }
+    else {
+        // í…ìŠ¤ì²˜ ì—†ì„ ë•Œ - 1ë²ˆ ì½”ë“œì˜ ì–´ë‘ìš´ ë°°ê²½
+        GLfloat matPinArea[] = { 0.15f, 0.15f, 0.15f, 1.0f };
+        glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, matPinArea);
+
+        glBegin(GL_QUADS);
+        glNormal3f(0.0f, 0.0f, 1.0f);
+        glVertex3f(-wallDist, 0.0f, -LANE_LENGTH - 1.0f);
+        glVertex3f(wallDist, 0.0f, -LANE_LENGTH - 1.0f);
+        glVertex3f(wallDist, 2.0f, -LANE_LENGTH - 1.0f);
+        glVertex3f(-wallDist, 2.0f, -LANE_LENGTH - 1.0f);
+        glEnd();
+    }
 }
 
-// ÅØ½ºÃ³ ÀÎµ¦½º º¯°æ ÇïÆÛ ÇÔ¼öµé ±¸Çö
+// í…ìŠ¤ì²˜ ì¸ë±ìŠ¤ ë³€ê²½ í•¨ìˆ˜ (ë²”ìœ„ ì²´í¬)
 void Lane::SetLaneTexture(int index) {
-    if (index >= 0 && index < laneTextures.size()) currentLaneIndex = index;
-}
-void Lane::SetWallTexture(int index) {
-    if (index >= 0 && index < wallTextures.size()) currentWallIndex = index;
-}
-void Lane::SetCeilingTexture(int index) {
-    if (index >= 0 && index < ceilingTextures.size()) currentCeilingIndex = index;
-}
-void Lane::SetFloorTexture(int index) {
-    if (index >= 0 && index < floorTextures.size()) currentFloorIndex = index;
+    if (index >= 0 && index < laneTextures.size()) {
+        currentLaneIndex = index;
+    }
 }
 
-// DrawGutters, DrawFoulLineÀº ÀÌÀü°ú µ¿ÀÏÇÏ¹Ç·Î »ı·«ÇÏ°Å³ª ±×´ë·Î µÓ´Ï´Ù.
-void Lane::DrawGutters() { /* ÀÌÀü ÄÚµå À¯Áö */ }
-void Lane::DrawFoulLine() { /* ÀÌÀü ÄÚµå À¯Áö */ }
+void Lane::SetWallTexture(int index) {
+    if (index >= 0 && index < wallTextures.size()) {
+        currentWallIndex = index;
+    }
+}
+
+void Lane::SetCeilingTexture(int index) {
+    if (index >= 0 && index < ceilingTextures.size()) {
+        currentCeilingIndex = index;
+    }
+}
+
+void Lane::SetFloorTexture(int index) {
+    if (index >= 0 && index < floorTextures.size()) {
+        currentFloorIndex = index;
+    }
+}

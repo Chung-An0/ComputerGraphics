@@ -1,82 +1,126 @@
 #pragma once
 #include "Common.h"
+#include "Texture.h"
 
 class Pin {
 public:
-    // ¹°¸® ¼Ó¼º
+    // ========== ë¬¼ë¦¬ ì†ì„± ==========
     vec3 position;
     vec3 velocity;
     vec3 angularVelocity;
     float radius;
     float height;
     float mass;
-    
-    // È¸Àü »óÅÂ
-    vec3 rotation;      // ¿ÀÀÏ·¯ °¢µµ (x, y, z)
-    
-    // »óÅÂ
-    bool isStanding;    // ¼­ÀÖ´ÂÁö
-    bool isFalling;     // ¾²·¯Áö´Â ÁßÀÎÁö
-    int pinNumber;      // ÇÉ ¹øÈ£ (1-10)
-    
-    // »ı¼ºÀÚ
+
+    // ========== íšŒì „ ìƒíƒœ ==========
+    vec3 rotation;  // ì˜¤ì¼ëŸ¬ ê°ë„ (x, y, z)
+
+    // ========== ìƒíƒœ í”Œë˜ê·¸ ==========
+    bool isStanding;    // ì„œìˆëŠ”ì§€
+    bool isFalling;     // ì“°ëŸ¬ì§€ëŠ” ì¤‘ì¸ì§€
+    int pinNumber;      // í•€ ë²ˆí˜¸ (1-10)
+
+    // ========== âœ… 2ë²ˆ ì½”ë“œ:  ë¬¼ë¦¬ ì‹œë®¬ë ˆì´ì…˜ ê°œì„  ==========
+    vec3 centerOfMass;  // ë¬´ê²Œ ì¤‘ì‹¬
+    float inertia;      // ê´€ì„± ëª¨ë©˜íŠ¸
+
+    // ========== âœ… 1ë²ˆ ì½”ë“œ: ê²Œì„ ìƒíƒœ ê´€ë¦¬ ==========
+    bool inPlay;        // í•€ì´ ë ˆì¸ì— í™œì„±í™”ëœ ìƒíƒœì¸ì§€ (ì“°ëŸ¬ì§€ë©´ false)
+
+    // ========== âœ… 1ë²ˆ ì½”ë“œ: ì¶©ëŒ ì´í™íŠ¸ (í˜„ì¬ ë¯¸ì‚¬ìš©, í–¥í›„ í™•ì¥ìš©) ==========
+    bool effectActive;      // ì´í™íŠ¸ í™œì„±í™” ì—¬ë¶€
+    float effectTimer;      // ì´í™íŠ¸ ë‚¨ì€ ì‹œê°„ (ì´ˆ)
+    static constexpr float EFFECT_DURATION = 0.3f;  // ì´í™íŠ¸ ì§€ì† ì‹œê°„
+
+    // ========== ìƒì„±ì ==========
     Pin();
     Pin(int number, vec3 pos);
-    
-    // ÃÊ±âÈ­
+
+    // ========== ì´ˆê¸°í™” ==========
     void Reset();
-    
-    // ¹°¸® ¾÷µ¥ÀÌÆ®
+
+    // ========== ë¬¼ë¦¬ ì—…ë°ì´íŠ¸ ==========
     void Update(float dt);
-    
-    // °ø°ú Ãæµ¹ Ã¼Å©
-    bool CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity);
-    
-    // ´Ù¸¥ ÇÉ°ú Ãæµ¹ Ã¼Å©
+
+    // ========== ì¶©ëŒ ì²˜ë¦¬ ==========
+    // âœ… 2ë²ˆ ì½”ë“œ: ballVelocityë¥¼ ì°¸ì¡°ë¡œ ë°›ì•„ ê³µë„ ì˜í–¥ ë°›ìŒ
+    bool CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVelocity, vec3 ballAngularVelocity);
     bool CheckCollisionWithPin(Pin& other);
-    
-    // Ãæµ¹ ¹İÀÀ
     void ApplyImpact(vec3 impactDir, float force);
-    
-    // ·»´õ¸µ
+
+    // ========== ë Œë”ë§ ==========
     void Draw();
-    
-    // ¹Ù´Ú Ãæµ¹ Ã³¸®
+
+    // ========== ë°”ë‹¥ ì¶©ëŒ ==========
     void CheckFloor();
-    
-    // ¿ÏÀüÈ÷ ¾²·¯Á³´ÂÁö
-    bool IsDown();
+
+    // ========== ìƒíƒœ í™•ì¸ ==========
+    bool IsDown();  // ì™„ì „íˆ ì“°ëŸ¬ì¡ŒëŠ”ì§€
+
+    // ========== âœ… í…ìŠ¤ì²˜ ë¡œë”© (1ë²ˆ + 2ë²ˆ í†µí•©) ==========
+    // 1ë²ˆ:  static void LoadTexture();
+    // 2ë²ˆ: static void InitTexture(const char* filepath);
+    // â†’ 2ë²ˆ ë°©ì‹ ì±„íƒ (íŒŒì¼ ê²½ë¡œ ì§€ì • ê°€ëŠ¥)
+    static void InitTexture(const char* filepath);
+
+    // âœ… 1ë²ˆ ì½”ë“œ í˜¸í™˜ì„± ìœ ì§€ (ë‚´ë¶€ì ìœ¼ë¡œ InitTexture í˜¸ì¶œ)
+    static void LoadTexture() {
+        InitTexture("textures/pin. jpg");
+    }
+
+private:
+    // ========== âœ… í…ìŠ¤ì²˜ (1ë²ˆ + 2ë²ˆ í†µí•©) ==========
+    // 1ë²ˆ: static GLuint texture;
+    // 2ë²ˆ: static GLuint pinTextureID; static bool textureLoaded;
+    // â†’ ë‘˜ ë‹¤ ìœ ì§€ (í˜¸í™˜ì„±)
+    static GLuint pinTextureID;
+    static bool textureLoaded;
+
+public:
+    // âœ… 1ë²ˆ ì½”ë“œ í˜¸í™˜ì„±:  textureëŠ” pinTextureIDì˜ ë³„ì¹­
+    static GLuint& texture;  // ì°¸ì¡°ë¡œ ì„ ì–¸í•˜ì—¬ pinTextureIDì™€ ë™ì¼í•˜ê²Œ ì‚¬ìš©
+
+private:
+    // ========== âœ… 2ë²ˆ ì½”ë“œ: ì»¤ìŠ¤í…€ ë©”ì‰¬ ==========
+    struct Vertex {
+        vec3 position;
+        vec3 normal;
+        vec2 texCoord;
+    };
+
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+    bool meshGenerated;
+
+    void GenerateRevolutionMesh();
+    float EvaluateCardinalSpline1D(float p0, float p1, float p2, float p3, float t);
+    vec2 GetProfilePoint(float t);
 };
 
-// 10°³ ÇÉ °ü¸® Å¬·¡½º
+// ========== PinManager (10ê°œ í•€ ê´€ë¦¬) ==========
 class PinManager {
 public:
     Pin pins[10];
     int standingCount;
-    
+
     PinManager();
-    
-    // ¸ğµç ÇÉ ÃÊ±âÈ­
-    void ResetAll();
-    
-    // 2Åõ±¸¿ë: ¾²·¯Áø ÇÉ¸¸ Á¦°Å
-    void RemoveFallenPins();
-    
-    // ¾÷µ¥ÀÌÆ®
+
+    // ========== ì´ˆê¸°í™” ==========
+    void ResetAll();            // ëª¨ë“  í•€ ì´ˆê¸°í™”
+    void RemoveFallenPins();    // 2íˆ¬êµ¬ìš©:  ì“°ëŸ¬ì§„ í•€ë§Œ ì œê±°
+
+    // ========== ì—…ë°ì´íŠ¸ ==========
     void Update(float dt);
-    
-    // °ø°ú Ãæµ¹ Ã¼Å©
-    void CheckBallCollision(vec3 ballPos, float ballRadius, vec3 ballVelocity, vec3 ballAngularVelocity);
-    
-    // ÇÉ³¢¸® Ãæµ¹ Ã¼Å©
-    void CheckPinCollisions();
-    
-    // ·»´õ¸µ
+
+    // ========== ì¶©ëŒ ì²´í¬ ==========
+    // âœ… 2ë²ˆ ì½”ë“œ: ballVelocityë¥¼ ì°¸ì¡°ë¡œ ë°›ìŒ
+    void CheckBallCollision(vec3 ballPos, float ballRadius, vec3& ballVelocity, vec3 ballAngularVelocity);
+    void CheckPinCollisions();  // í•€ë¼ë¦¬ ì¶©ëŒ
+
+    // ========== ë Œë”ë§ ==========
     void Draw();
-    
-    // ¼­ÀÖ´Â ÇÉ ¼ö
-    int CountStanding();
-    
-    // ¸ğµç ÇÉÀÌ ¸ØÃè´ÂÁö
-    bool AllSettled();
+
+    // ========== ìƒíƒœ í™•ì¸ ==========
+    int CountStanding();    // ì„œìˆëŠ” í•€ ìˆ˜
+    bool AllSettled();      // ëª¨ë“  í•€ì´ ë©ˆì·„ëŠ”ì§€
 };

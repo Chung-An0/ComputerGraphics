@@ -4,33 +4,35 @@
 #include <vector>
 #include <string>
 
+using namespace std;
+
 class Lane {
 public:
-    // ÅØ½ºÃ³ ¸®½ºÆ® (¿©·¯ Àå ÀúÀå)
+    // í…ìŠ¤ì²˜ ë¦¬ìŠ¤íŠ¸ (ì—¬ëŸ¬ ê°œ ì„ íƒ ê°€ëŠ¥)
     vector<GLuint> laneTextures;
     vector<GLuint> wallTextures;
     vector<GLuint> ceilingTextures;
     vector<GLuint> floorTextures;
 
-    // ÇöÀç ¼±ÅÃµÈ ÅØ½ºÃ³ ÀÎµ¦½º (0¹øÀÌ ±âº»)
+    // í˜„ì¬ ì„ íƒëœ í…ìŠ¤ì²˜ ì¸ë±ìŠ¤ (0ë¶€í„° ì‹œì‘)
     int currentLaneIndex;
     int currentWallIndex;
     int currentCeilingIndex;
     int currentFloorIndex;
 
-    // ±âÅ¸ ÅØ½ºÃ³
+    // ê¸°íƒ€ í…ìŠ¤ì²˜ (1ë²ˆ ì½”ë“œ í˜¸í™˜)
     GLuint gutterTexture;
     GLuint foulLineTexture;
 
-    // Á¶¸í
+    // ì¡°ëª…
     vec3 lightPosition;
 
     Lane();
 
-    // ÃÊ±âÈ­
+    // ì´ˆê¸°í™”
     void Init();
 
-    // ·»´õ¸µ
+    // ë Œë”ë§
     void Draw();
     void DrawLaneSurface();
     void DrawGutters();
@@ -38,7 +40,7 @@ public:
     void DrawEnvironment();
     void DrawPinArea();
 
-    // ÅØ½ºÃ³ º¯°æ ÇÔ¼ö (¾ÈÀüÇÏ°Ô ¹üÀ§ Ã¼Å©)
+    // í…ìŠ¤ì²˜ ë³€ê²½ í•¨ìˆ˜ (ë²”ìœ„ì²´í¬ í¬í•¨)
     void SetLaneTexture(int index);
     void SetWallTexture(int index);
     void SetCeilingTexture(int index);
