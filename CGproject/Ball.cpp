@@ -2,6 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include "Texture.h"
+#include "common.h"
 
 static float Clamp01(float v) {
     if (v < 0.0f) return 0.0f;
@@ -10,18 +11,13 @@ static float Clamp01(float v) {
 }
 
 // 정적 멤버 초기화
-// 3개 공 텍스처와 현재 선택된 텍스처 ID를 초기화한다.
 GLuint Ball::textures[3] = { 0, 0, 0 };
 GLuint Ball::currentTexture = 0;
 
-// 텍스처 로딩: 세 가지 공 텍스처를 로드한다. 파일이 없으면 0이 유지된다.
 void Ball::LoadTextures() {
-    // 기본 공 텍스처: ball.jpg
-    textures[0] = Texture::Load("textures/ball.jpg");
-    // 추가 공 텍스처: ball1.jpg, ball2.jpg. 존재하지 않을 경우 메시지만 출력하고 0을 유지한다.
+    textures[0] = Texture::Load("textures/ball. jpg");
     textures[1] = Texture::Load("textures/ball1.jpg");
     textures[2] = Texture::Load("textures/ball2.jpg");
-    // 초기값: 첫 번째 텍스처 사용
     currentTexture = textures[0];
 }
 
@@ -83,15 +79,12 @@ void Ball::Launch(float power, SpinType spin) {
     float p = Clamp01(power);
     float shaped = powf(p, 1.15f);
 
-    // ✅ "정상 훅 느낌" 유지: 훅은 속도 상한을 낮게 잡아 순간이동 방지
-    float baseSpeed = 7.5f + shaped * 11.0f;  // 대략 7.5 ~ 18.5
+    float baseSpeed = 7.5f + shaped * 11.0f;
 
-    // ✅ 너 요구: "직진만 조금 더 세지면 됨"
     if (spin == SpinType::STRAIGHT) {
-        baseSpeed *= 1.25f; // 직진만 25% 상향 (1.15~1.35 조절 가능)
+        baseSpeed *= 1.25f;
     }
     else {
-        // 훅은 너무 빨라지면 totalTime이 너무 작아져서 한 프레임에 끝으로 점프할 수 있음
         if (baseSpeed > 14.5f) baseSpeed = 14.5f;
     }
 
@@ -110,12 +103,6 @@ void Ball::Launch(float power, SpinType spin) {
 }
 
 void Ball::SetupSpline(float baseSpeed, SpinType spin) {
-    // ✅ "정상이던" 방식: 고정된 S-curve (시작 위치에 따라 경로도 같이 이동)
-    // - Left: 처음 오른쪽(+)
-    // - Right: 처음 왼쪽(-)
-    // - 끝에서는 startX로 복귀 (중앙에서 던지면 중앙으로 귀결)
-    // - 가장자리에서 바깥으로 가면 gutter가 나야 정상 → 여기서는 x 클램프 안 함
-
     pathStartX = position.x;
     pathStartZ = position.z;
 
@@ -129,7 +116,6 @@ void Ball::SetupSpline(float baseSpeed, SpinType spin) {
     float sign = (spin == SpinType::LEFT_HOOK) ? +1.0f : -1.0f;
     pathAmp = sign * amp;
 
-    // 경로 길이 샘플링해서 totalTime 계산 (속도 일정하게 보이게)
     auto evalAt = [&](float t) -> vec3 {
         const float PI = 3.14159265f;
         float x = pathStartX + pathAmp * sinf(PI * t);
@@ -153,14 +139,12 @@ void Ball::SetupSpline(float baseSpeed, SpinType spin) {
 
     totalTime = lengthSum / std::max(0.1f, baseSpeed);
 
-    // ✅ 순간이동 방지: totalTime이 너무 작으면(한 프레임 내 종료) 최소 시간 보장
     if (totalTime < 0.60f) totalTime = 0.60f;
 
     angularVelocity = vec3(0.0f, (spin == SpinType::LEFT_HOOK) ? 1.0f : -1.0f, 0.0f);
 }
 
 vec3 Ball::EvaluateCardinalSpline(const vec3& p0, const vec3& p1, const vec3& p2, const vec3& p3, float t) {
-    // 호환용
     const float tension = 0.5f;
     float t2 = t * t;
     float t3 = t2 * t;
@@ -192,7 +176,6 @@ void Ball::Update(float dt) {
         float t = rollTime / totalTime;
 
         if (t >= 1.0f) {
-            // 끝점 스냅은 한 번만, 이후 직진
             t = 1.0f;
             position = EvaluateSpline(t);
             useSpline = false;
@@ -201,7 +184,6 @@ void Ball::Update(float dt) {
             velocity = vec3(0.0f, 0.0f, -keep);
         }
         else {
-            // dt로 속도 뽑지 않고, 접선 기반으로 일정속도 유지 (급가속/순간이동 방지)
             vec3 pos = EvaluateSpline(t);
 
             float eps = 0.0025f;
@@ -238,7 +220,6 @@ void Ball::Update(float dt) {
         }
     }
 
-    // 레인 끝 지나가면 감속/정지
     if (position.z < PIN_START_Z - 2.0f || length(velocity) < 0.1f) {
         velocity *= 0.8f;
         if (length(velocity) < 0.05f) {
@@ -254,9 +235,8 @@ void Ball::ApplyFriction(float dt) {
 
     float frictionCoeff = FRICTION;
 
-    // ✅ 직진만 핀까지 가게: 마찰만 약화 (훅은 건드리지 않음)
     if (spinType == SpinType::STRAIGHT) {
-        frictionCoeff *= 0.45f;   // 0.35~0.55 사이에서 취향 조절
+        frictionCoeff *= 0.45f;
     }
 
     if (isInGutter) frictionCoeff *= 2.0f;
@@ -287,25 +267,21 @@ void Ball::CheckGutter() {
 }
 
 void Ball::Draw() {
-    // 텍스처를 사용하여 공을 렌더링한다. 공의 색상은 텍스처와 곱(modulate)되어 표현된다.
     glDisable(GL_COLOR_MATERIAL);
 
     glPushMatrix();
     glTranslatef(position.x, position.y, position.z);
     glRotatef(rotationAngle, rotationAxis.x, rotationAxis.y, rotationAxis.z);
 
-    // 공 색상은 타입에 따라 조금씩 다른 색을 적용하지만, 텍스처가 존재하는 경우에는 색상을 흰색으로 설정하여 텍스처가 그대로 보이도록 한다.
     GLfloat matColor[4];
     GLfloat matAmbient[4];
     if (currentTexture != 0) {
-        // 텍스처가 있으면 기본 색을 흰색으로, 환경광은 중간 밝기로 한다
         matColor[0] = matColor[1] = matColor[2] = 1.0f;
         matColor[3] = 1.0f;
         matAmbient[0] = matAmbient[1] = matAmbient[2] = 0.5f;
         matAmbient[3] = 1.0f;
     }
     else {
-        // 텍스처가 없으면 타입별 색상 사용
         switch (ballType) {
         case 0:
             matColor[0] = 0.9f; matColor[1] = 0.1f; matColor[2] = 0.1f; matColor[3] = 1.0f;
@@ -333,12 +309,10 @@ void Ball::Draw() {
     glMaterialfv(GL_FRONT, GL_SPECULAR, matSpecular);
     glMaterialfv(GL_FRONT, GL_SHININESS, matShininess);
 
-    // 텍스처 활성화 및 바인딩
     glEnable(GL_TEXTURE_2D);
     if (currentTexture != 0) {
         Texture::Bind(currentTexture, 0);
     }
-    // 텍스처가 재질 색상과 곱해지도록 설정
     glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
     GLUquadric* quad = gluNewQuadric();
@@ -356,10 +330,49 @@ void Ball::Draw() {
     glEnable(GL_COLOR_MATERIAL);
 }
 
+// [2번 추가] 그림자 그리기 함수
+void Ball::DrawShadow(vec3 lightPos) {
+    // 1. 조명과 텍스처 끄기 (그림자는 단색이어야 함)
+    glDisable(GL_LIGHTING);
+    glDisable(GL_TEXTURE_2D);
+
+    glPushMatrix();
+
+    // 2. 그림자 투영 행렬 생성
+    GLfloat shadowMat[16];
+
+    // 바닥 평면:  y = 0.001
+    glm::vec4 groundPlane(0.0f, 1.0f, 0.0f, -0.001f);
+    glm::vec4 lightPos4(lightPos.x, lightPos.y, lightPos.z, 1.0f);
+
+    // Common. h에 추가된 함수 호출
+    MakeShadowMatrix(shadowMat, lightPos4, groundPlane);
+
+    // 그림자 투영 모델뷰 행렬에 곱하기
+    glMultMatrixf(shadowMat);
+
+    // 3. 실제 공의 위치로 그림자 (변환은 이미 적용됨)
+    glTranslatef(position.x, position.y, position.z);
+    glRotatef(rotationAngle, rotationAxis.x, rotationAxis.y, rotationAxis.z);
+
+    // 4. 짙은 회색으로 렌더링
+    glColor3f(0.15f, 0.15f, 0.15f);
+
+    // 공 모양 그리기
+    GLUquadric* quad = gluNewQuadric();
+    gluSphere(quad, radius, 32, 32);
+    gluDeleteQuadric(quad);
+
+    glPopMatrix();
+
+    // 5. 복원 원복
+    glEnable(GL_LIGHTING);
+    glColor3f(1.0f, 1.0f, 1.0f); // 기본 색상 복원
+}
+
 void Ball::SetBallType(int type) {
     if (type < 0) type = 0;
     if (type > 2) type = 2;
     ballType = type;
-    // 선택된 타입에 따라 현재 텍스처를 업데이트한다. 만약 해당 텍스처가 로드되지 않았다면 0으로 유지된다.
     currentTexture = textures[type];
 }

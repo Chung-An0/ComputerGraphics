@@ -73,3 +73,34 @@ enum class CameraMode {
     TOP_VIEW,       // 위에서 내려다보는 시점
     SIDE_VIEW       // 측면에서 보는 시점
 };
+
+// [추가] 그림자 행렬 생성 함수 (Planar Projected Shadow)
+// - lightPos: 광원의 위치 (x, y, z, w). w=1이면 점광원
+// - plane: 그림자가 맺힐 평면의 방정식 (ax + by + cz + d = 0)
+inline void MakeShadowMatrix(GLfloat* matrix, glm::vec4 lightPos, glm::vec4 plane) {
+    GLfloat dot;
+
+    // 평면 법선과 광원 위치의 내적 계산
+    dot = plane.x * lightPos.x + plane.y * lightPos.y + plane.z * lightPos.z + plane.w * lightPos.w;
+
+    // 그림자 투영 행렬 계산 공식 (Shadow Matrix)
+    matrix[0] = dot - lightPos.x * plane.x;
+    matrix[4] = -lightPos.x * plane.y;
+    matrix[8] = -lightPos.x * plane.z;
+    matrix[12] = -lightPos.x * plane.w;
+
+    matrix[1] = -lightPos.y * plane.x;
+    matrix[5] = dot - lightPos.y * plane.y;
+    matrix[9] = -lightPos.y * plane.z;
+    matrix[13] = -lightPos.y * plane.w;
+
+    matrix[2] = -lightPos.z * plane.x;
+    matrix[6] = -lightPos.z * plane.y;
+    matrix[10] = dot - lightPos.z * plane.z;
+    matrix[14] = -lightPos.z * plane.w;
+
+    matrix[3] = -lightPos.w * plane.x;
+    matrix[7] = -lightPos.w * plane.y;
+    matrix[11] = -lightPos.w * plane.z;
+    matrix[15] = dot - lightPos.w * plane.w;
+}

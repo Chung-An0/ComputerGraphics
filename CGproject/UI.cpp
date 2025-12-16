@@ -468,7 +468,7 @@ void UI::DrawMenu() {
     case 0: // 공 선택
         categoryTitle = "< SELECT BALL >";
         {
-            const char* ballNames[] = { "  Red Ball", "  Blue Ball", "  Green Ball" };
+            const char* ballNames[] = { "  grey Ball", "  Blue Ball", "  Green Ball" };
             currentItemText = ballNames[previewBall];
             // 별도 공 그리기 함수를 그리므로
         }

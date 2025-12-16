@@ -1,6 +1,5 @@
 #include "Game.h"
 #include "Texture.h"
-// 텍스처 로딩을 위해 Ball, Pin 헤더를 포함한다
 #include "Ball.h"
 #include "Pin.h"
 
@@ -11,7 +10,6 @@
 struct _Vec4d { double x, y, z, w; };
 
 static _Vec4d _MulMat4Vec4(const double m[16], const _Vec4d& v) {
-    // OpenGL column-major
     _Vec4d r;
     r.x = m[0] * v.x + m[4] * v.y + m[8] * v.z + m[12] * v.w;
     r.y = m[1] * v.x + m[5] * v.y + m[9] * v.z + m[13] * v.w;
@@ -296,9 +294,7 @@ void Game::Init() {
     }
 
     lane.Init();
-    // 공과 핀에 사용할 텍스처 로딩 (textures/ball.jpg, ball1.jpg, ball2.jpg, textures/pin.jpg)
     Ball::LoadTextures();
-    //Pin::LoadTexture();
     Pin::InitTexture("texture/pin_texture.bmp");
     pins.ResetAll();
     ball.Reset(0.0f);
@@ -320,7 +316,6 @@ void Game::Init() {
     glFogi(GL_FOG_MODE, GL_LINEAR);
     glFogf(GL_FOG_START, 10.0f);
     glFogf(GL_FOG_END, 30.0f);
-
 }
 
 void Game::Update() {
@@ -354,7 +349,7 @@ void Game::Update() {
         break;
     }
 
-    // ✅ PIN_ACTION과 FRAME_END 상태에서는 카메라 자동 업데이트 안 함
+    // PIN_ACTION과 FRAME_END 상태에서는 카메라 자동 업데이트 안 함
     if (state != GameState::PIN_ACTION && state != GameState::FRAME_END) {
         if (camera.mode == CameraMode::BALL_FOLLOW) {
             vec3 dir = (length(ball.velocity) > 0.1f) ? normalize(ball.velocity) : vec3(0.0f, 0.0f, -1.0f);
@@ -385,6 +380,8 @@ void Game::Render() {
 
     camera.Apply();
 
+    // 3D 오브젝트 렌더링
+    // 1. 레인(바닥)과 핀을 먼저 그린다
     lane.Draw();
     pins.Draw();
 
@@ -393,15 +390,27 @@ void Game::Render() {
         _DrawAimGuideLine(camera.playerX, ball.position.z, ui.selectedSpin);
     }
 
+    // 천장 점수판 (3D)
     ui.DrawScoreboard3D();
 
+    // 공 표시 조건 확인
+    bool showBall = false;
     if (state != GameState::PIN_ACTION && state != GameState::FRAME_END) {
-        ball.Draw();
+        showBall = true;
     }
     else if (ball.isRolling) {
+        showBall = true;
+    }
+
+    if (showBall) {
+        // [2번 추가] 2. 그림자를 먼저 그린다 (바닥 위에 렌더링)
+        ball.DrawShadow(lane.lightPosition);
+
+        // [기본] 3. 진짜 공을 그린다 (그림자 위에 렌더링)
         ball.Draw();
     }
 
+    // UI 렌더링
     ui.Draw();
     ui.DrawGameState(state);
     ui.DrawStrikeSpare(showStrike, showSpare);
@@ -466,16 +475,13 @@ void Game::UpdatePinAction() {
         ball.Update(deltaTime);
     }
 
-    // ✅ PIN_ACTION 상태에서는 카메라를 핀 구역에 고정
-    // 공이 멈춘 후에도 핀들이 쓰러지는 장면을 잘 볼 수 있도록
+    // [2번 추가] PIN_ACTION 상태에서는 카메라를 핀 구역에 고정
     if (camera.mode == CameraMode::BALL_FOLLOW) {
-        // 핀 구역을 바라보는 고정 카메라
-        vec3 pinCenter = vec3(0.0f, 0.0f, PIN_START_Z - 1.5f);  // 핀 중앙
-        vec3 cameraPos = vec3(0.0f, 2.5f, PIN_START_Z + 3.0f);  // 핀 뒤쪽 위
+        vec3 pinCenter = vec3(0.0f, 0.0f, PIN_START_Z - 1.5f);
+        vec3 cameraPos = vec3(0.0f, 2.5f, PIN_START_Z + 3.0f);
 
         camera.position = cameraPos;
 
-        // 핀 중앙을 바라보도록
         vec3 dir = normalize(pinCenter - cameraPos);
         camera.pitch = degrees(asin(dir.y));
         camera.yaw = degrees(atan2(dir.x, -dir.z)) - 90.0f;
@@ -514,11 +520,11 @@ void Game::UpdatePinAction() {
         transitionTimer = 1.5f;
     }
 }
+
 void Game::UpdateFrameEnd() {
     transitionTimer -= deltaTime;
 
     if (transitionTimer <= 0) {
-        //  10프레임까지 끝나면 멈추지 말고 즉시 초기화
         if (ui.currentFrame >= 10) {
             ResetGame();
             return;
@@ -544,6 +550,13 @@ void Game::OnKeyDown(unsigned char key) {
         if (state == GameState::AIMING) ui.ToggleMenu();
         break;
 
+    case 'q':
+    case 'Q':
+        if (ui.menuOpen) {
+            ui.NextCategory();
+        }
+        break;
+
     case '1':
         ui.selectedBall = 0;
         ui.previewBall = 0;
@@ -567,10 +580,9 @@ void Game::OnKeyDown(unsigned char key) {
         }
         break;
 
-    case 13: // Enter
+    case 13:  // Enter
         if (ui.menuOpen) {
-            ui.SelectBall();
-            ball.SetBallType(ui.selectedBall);
+            ui.SelectItem();
         }
         break;
 
@@ -580,7 +592,6 @@ void Game::OnKeyDown(unsigned char key) {
 
     case 'c':
     case 'C':
-        // 카메라 시점 순환: FIRST_PERSON → BALL_FOLLOW → TOP_VIEW → SIDE_VIEW → FIRST_PERSON
         if (camera.mode == CameraMode::FIRST_PERSON) {
             camera.SetMode(CameraMode::BALL_FOLLOW);
         }
@@ -599,10 +610,8 @@ void Game::OnKeyDown(unsigned char key) {
 
 void Game::OnMouse(int button, int st, int x, int y) {
     if (button == GLUT_LEFT_BUTTON && st == GLUT_DOWN) {
-        // UI click first
         ui.OnMouseClick(x, y);
 
-        // If the click was on the UI spin buttons, don't treat it as lane picking
         int yFlip = WINDOW_HEIGHT - y;
         bool onSpinUI = false;
         for (int i = 0; i < 3; i++) {
@@ -612,7 +621,6 @@ void Game::OnMouse(int button, int st, int x, int y) {
             }
         }
 
-        // Lane picking: click to set the aim X (same as A/D)
         if (!onSpinUI && this->state == GameState::AIMING && !ui.menuOpen) {
             double hx, hy, hz;
             if (_PickLanePoint(x, y, (double)BALL_RADIUS, camera, hx, hy, hz)) {
@@ -674,9 +682,7 @@ void Game::ResetForThrow() {
     camera.pitch = -5.0f;
 }
 
-// NextFrame(): 현재 버전에서는 사용하지 않습니다. 인터페이스 충돌을 피하기 위해 빈 구현을 제공합니다.
 void Game::NextFrame() {
-    // 이 함수는 사용되지 않습니다. 만약 프레임 진입 처리 로직이 필요하다면 여기서 구현하세요.
 }
 
 void Game::ResetGame() {

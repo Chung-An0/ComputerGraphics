@@ -47,6 +47,7 @@ public:
     vec3 EvaluateSpline(float t); // 0..1
 
     void Draw();
+    void DrawShadow(vec3 lightPos);  // [추가] 그림자 렌더링 함수
     void SetBallType(int type);
 
     bool IsStopped();
@@ -57,6 +58,6 @@ public:
     static GLuint textures[3];
     // 현재 렌더링에 사용할 텍스처 ID. SetBallType()에서 업데이트된다.
     static GLuint currentTexture;
-    // 텍스처 로딩 함수: Game::Init()에서 호출하여 textures/ball.jpg, ball1.jpg, ball2.jpg를 읽는다.
+    // 텍스처 로딩 함수: Game::Init()에서 호출하여 textures/ball.jpg, ball1.jpg, ball2.jpg를 읽는다. 
     static void LoadTextures();
 };
