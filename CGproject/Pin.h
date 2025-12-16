@@ -1,6 +1,9 @@
 #pragma once
 #include "Common.h"
 
+// 카메라를 참조하는 메서드 선언에 사용하기 위해 전방 선언
+class Camera;
+
 class Pin {
 public:
     // 물리 속성
@@ -57,7 +60,12 @@ public:
     void ApplyImpact(vec3 impactDir, float force);
 
     // 렌더링
+    // 핀을 렌더링합니다. 현재 카메라 정보를 사용하지 않고 모든 핀을 그립니다.
     void Draw();
+
+    // 카메라의 시점을 고려하여 핀을 렌더링합니다.
+    // 카메라 앞쪽에 있는 핀들만 그려 성능을 향상시키는 간단한 컬링을 구현합니다.
+    void Draw(const Camera& cam);
 
     // 바닥 충돌 처리
     void CheckFloor();
@@ -91,6 +99,10 @@ public:
 
     // 렌더링
     void Draw();
+
+    // 카메라의 시점을 고려하여 핀을 렌더링합니다.
+    // 카메라 앞쪽에 있는 핀들만 그리는 간단한 컬링을 수행합니다.
+    void Draw(const Camera& cam);
 
     // 서있는 핀 수
     int CountStanding();

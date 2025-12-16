@@ -65,7 +65,8 @@ public:
     void CalculateDeltaTime();
     
 private:
-    Game() {}
+    // 기본 생성자에서 멤버를 초기화합니다. 정의는 Game.cpp에서 제공합니다.
+    Game();
     bool keys[256];             // 키 상태
     bool spacePressed;
 };

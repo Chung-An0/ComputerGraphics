@@ -46,7 +46,8 @@ public:
     void SetMode(CameraMode newMode);
 
     // 시점 방향 벡터
-    vec3 GetForward();
-    vec3 GetRight();
-    vec3 GetUp();
+    // 이 함수들은 카메라 상태를 변경하지 않으므로 const를 붙여준다.
+    vec3 GetForward() const;
+    vec3 GetRight() const;
+    vec3 GetUp() const;
 };

@@ -62,7 +62,7 @@ void Camera::UpdateTopView(vec3 ballPos) {
     float topHeight = 4.0f;
     float topOffsetZ = 1.0f;
     position = vec3(ballPos.x, topHeight, ballPos.z + topOffsetZ);
-
+    
     // 공을 바라보는 방향 계산
     vec3 lookTarget = ballPos;
     vec3 dir = normalize(lookTarget - position);
@@ -132,7 +132,7 @@ void Camera::SetMode(CameraMode newMode) {
     }
 }
 
-vec3 Camera::GetForward() {
+vec3 Camera::GetForward() const {
     vec3 forward;
     forward.x = cos(radians(yaw)) * cos(radians(pitch));
     forward.y = sin(radians(pitch));
@@ -140,10 +140,10 @@ vec3 Camera::GetForward() {
     return normalize(forward);
 }
 
-vec3 Camera::GetRight() {
+vec3 Camera::GetRight() const {
     return normalize(cross(GetForward(), vec3(0.0f, 1.0f, 0.0f)));
 }
 
-vec3 Camera::GetUp() {
+vec3 Camera::GetUp() const {
     return normalize(cross(GetRight(), GetForward()));
 }

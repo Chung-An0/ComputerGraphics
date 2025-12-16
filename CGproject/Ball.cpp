@@ -303,8 +303,7 @@ void Ball::Draw() {
         matColor[3] = 1.0f;
         matAmbient[0] = matAmbient[1] = matAmbient[2] = 0.5f;
         matAmbient[3] = 1.0f;
-    }
-    else {
+    } else {
         // 텍스처가 없으면 타입별 색상 사용
         switch (ballType) {
         case 0:

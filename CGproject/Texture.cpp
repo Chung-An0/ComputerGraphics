@@ -34,7 +34,7 @@ GLuint Texture::Load(const char* filepath) {
             return true;
         }
         return false;
-        };
+    };
     // First attempt: original path
     bool loaded = tryLoad(path);
     // If failed, try switching between .jpg and .png extensions
@@ -54,7 +54,7 @@ GLuint Texture::Load(const char* filepath) {
     }
     // If still failed, try prefixing with one and two parent directories
     if (!loaded) {
-        std::vector<std::string> prefixes = { "../", "../../", "../../../" };
+        std::vector<std::string> prefixes = {"../", "../../", "../../../"};
         for (const auto& prefix : prefixes) {
             if (loaded) break;
             std::string basePath = prefix + path;
@@ -86,8 +86,7 @@ GLuint Texture::Load(const char* filepath) {
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
         cout << "Texture loaded: " << path << " (" << width << "x" << height << ")" << endl;
-    }
-    else {
+    } else {
         cout << "Failed to load texture: " << filepath << endl;
     }
     stbi_image_free(data);

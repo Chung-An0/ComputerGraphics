@@ -4,6 +4,24 @@
 #include "Ball.h"
 #include "Pin.h"
 
+// Game 기본 생성자: 모든 멤버를 안전한 기본값으로 초기화한다.
+Game::Game()
+    : state(GameState::AIMING),
+      deltaTime(0.0f),
+      lastTime(0),
+      pinSettleTimer(0.0f),
+      transitionTimer(0.0f),
+      pinsKnockedThisThrow(0),
+      showStrike(false),
+      showSpare(false),
+      messageTimer(0.0f),
+      spacePressed(false)
+{
+    // 키 배열 초기화
+    for (int i = 0; i < 256; i++) {
+        keys[i] = false;
+    }
+}
 // =============================================================
 // B-lite Picking (Screen -> World)
 // =============================================================
@@ -310,6 +328,14 @@ void Game::Init() {
     glEnable(GL_COLOR_MATERIAL);
     glEnable(GL_NORMALIZE);
 
+    // 백면 컬링을 활성화하여 보이지 않는 면을 렌더링하지 않도록 한다.
+    // NOTE: GL_CULL_FACE was previously enabled globally, which can cause single-sided
+    // primitives (e.g., wall/ceiling/floor quads) to disappear if their winding order
+    // is inconsistent. We disable global back-face culling here and rely on
+    // selective culling in PinManager::Draw() to skip drawing pins behind the camera.
+    // glEnable(GL_CULL_FACE);
+    // glCullFace(GL_BACK);
+
     glShadeModel(GL_SMOOTH);
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
 
@@ -384,7 +410,8 @@ void Game::Render() {
     camera.Apply();
 
     lane.Draw();
-    pins.Draw();
+    // 카메라 앞쪽의 핀만 렌더링하는 간단한 컬링을 수행한다.
+    pins.Draw(camera);
 
     // 조준/파워 단계에서만 가이드 라인
     if (!ui.menuOpen && (state == GameState::AIMING || state == GameState::CHARGING)) {

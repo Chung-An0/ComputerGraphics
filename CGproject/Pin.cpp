@@ -1,4 +1,5 @@
 #include "Pin.h"
+#include "Camera.h"
 #include <cstdlib>
 #include <ctime>
 #include <cmath>
@@ -470,6 +471,25 @@ void PinManager::CheckPinCollisions() {
 void PinManager::Draw() {
     for (int i = 0; i < 10; i++) {
         pins[i].Draw();
+    }
+}
+
+// 카메라 정보를 받아, 카메라 앞쪽에 있는 핀만 그리는 오버로드된 드로우 함수입니다.
+// 단순히 카메라의 전방 벡터와 핀까지의 벡터의 내적을 이용하여, 음수일 경우(카메라 뒤쪽) 렌더링을 생략합니다.
+void PinManager::Draw(const Camera& cam) {
+    // 카메라 위치와 전방 방향을 구한다.
+    vec3 camPos = cam.position;
+    vec3 camForward = cam.GetForward();
+    for (int i = 0; i < 10; i++) {
+        // 레인에 남아 있는 핀만 고려한다.
+        if (!pins[i].inPlay) continue;
+        // 카메라에서 핀까지의 벡터
+        vec3 toPin = pins[i].position - camPos;
+        // 내적이 양수이면 카메라 앞쪽에 있다. 0이면 정면, 음수이면 뒤쪽.
+        float dotVal = dot(camForward, normalize(toPin));
+        if (dotVal > 0.0f) {
+            pins[i].Draw();
+        }
     }
 }
 
