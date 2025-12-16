@@ -222,15 +222,19 @@ void Pin::Reset() {
 
 // ========== 물리 업데이트 ==========
 void Pin::Update(float dt) {
-    // ✅ 합친 코드 기능: 제거된 핀은 업데이트 안 함
     if (!inPlay) return;
-
     if (isStanding && !isFalling) return;
 
     velocity.y += GRAVITY * dt;
     position += velocity * dt;
 
     rotation += angularVelocity * dt * 57.2958f;
+
+    // ✅ 회전 각도 제한 (360도 넘어가지 않도록)
+    if (rotation.x > 180.0f) rotation.x -= 360.0f;
+    if (rotation.x < -180.0f) rotation.x += 360.0f;
+    if (rotation.z > 180.0f) rotation.z -= 360.0f;
+    if (rotation.z < -180.0f) rotation.z += 360.0f;
 
     velocity *= 0.97f;
     angularVelocity *= 0.88f;
@@ -241,17 +245,24 @@ void Pin::Update(float dt) {
         isStanding = false;
     }
 
-    if (IsDown() && length(velocity) < 0.1f) {
-        velocity *= 0.9f;
-        angularVelocity *= 0.85f;
+    // ✅ 쓰러진 핀의 안정화 개선
+    if (IsDown()) {
+        // 바닥에 닿았을 때 회전을 빠르게 감쇠
+        if (position.y <= height / 2.0f * 0.5f) {  // 높이가 절반 이하
+            angularVelocity *= 0.92f;  // 회전 더 빨리 멈춤
+        }
 
-        if (length(velocity) < 0.05f && length(angularVelocity) < 0.05f) {
-            velocity = vec3(0.0f);
-            angularVelocity = vec3(0.0f);
+        if (length(velocity) < 0.1f) {
+            velocity *= 0.9f;
+            angularVelocity *= 0.85f;
+
+            if (length(velocity) < 0.05f && length(angularVelocity) < 0.05f) {
+                velocity = vec3(0.0f);
+                angularVelocity = vec3(0.0f);
+            }
         }
     }
 
-    // ✅ 합친 코드 기능: 레인 밖 제거는 Update에서 즉시 처리 (애니메이션과 무관)
     float wallDist = LANE_WIDTH / 2.0f + GUTTER_WIDTH + 0.5f;
     if (fabs(position.x) > wallDist + 0.2f ||
         position.z > 4.0f ||
@@ -264,14 +275,9 @@ void Pin::Update(float dt) {
         inPlay = false;
         return;
     }
-
-    // ⚠️ 여기서는 "쓰러진 핀 즉시 제거" 절대 하지 않음
-    // -> RemoveFallenPins(턴 종료)에서 정리
 }
-
-// ========== 볼과의 충돌 ==========
+// ========== 볼-핀 충돌 (수정)
 bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVelocity, vec3 ballAngularVelocity) {
-    // ✅ 합친 코드 기능: 제거된 핀은 충돌 안 함
     if (!inPlay) return false;
 
     vec3 toPin = position - ballPos;
@@ -282,7 +288,8 @@ bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVeloc
         vec3 impactDir = normalize(toPin);
         float ballSpeed = length(ballVelocity);
 
-        float ballMass = 7.25f;
+        // 볼링공이 훨씬 무겁게 (6. 8kg → 7.5kg)
+        float ballMass = 7.5f;
         float totalMass = ballMass + mass;
 
         if (isStanding) {
@@ -293,43 +300,51 @@ bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVeloc
             impactHeight = std::max(0.0f, std::min(height, impactHeight));
             float heightRatio = impactHeight / height;
 
-            float restitution = 0.4f;
+            // 핀이 더 약하게 반응 (반발계수 낮춤)
+            float restitution = 0.25f;  // 0.4f → 0.25f
             vec3 ballVelNormal = dot(ballVelocity, impactDir) * impactDir;
             float ballVelMag = length(ballVelNormal);
 
+            // 핀이 받는 속도 계산 (공의 질량이 훨씬 크므로 핀이 많이 튕김)
             float pinSpeed = (2.0f * ballMass * ballVelMag) / totalMass;
 
-            velocity = impactDir * pinSpeed * 0.55f;
-            velocity.y = pinSpeed * 0.12f * (0.8f + heightRatio * 0.4f);
+            // 핀의 속도 - 수평은 조금 감소, 수직은 더 감소
+            velocity = impactDir * pinSpeed * 0.50f;  // 0.55f → 0.50f
+            velocity.y = pinSpeed * 0.10f * (0.8f + heightRatio * 0.3f);  // 0.12f → 0.10f
 
-            vec3 spinEffect = cross(ballAngularVelocity, impactDir) * 0.15f;
+            // 스핀 효과도 약하게
+            vec3 spinEffect = cross(ballAngularVelocity, impactDir) * 0.10f;  // 0.15f → 0.10f
             velocity += spinEffect;
 
+            // 토크 계산 (회전 약하게)
             vec3 leverArm = vec3(0.0f, impactHeight - centerOfMass.y, 0.0f);
             vec3 impactForce = impactDir * pinSpeed;
             vec3 torque = cross(leverArm, impactForce);
 
-            angularVelocity = torque / inertia * 0.8f;
-            angularVelocity.x += -impactDir.z * pinSpeed * 0.9f;
-            angularVelocity.z += impactDir.x * pinSpeed * 0.9f;
-            angularVelocity.y = (float)(rand() % 20 - 10) / 30.0f;
+            angularVelocity = torque / inertia * 0.7f;  // 0.8f → 0.7f
+            angularVelocity.x += -impactDir.z * pinSpeed * 0.85f;  // 0.9f → 0.85f
+            angularVelocity.z += impactDir.x * pinSpeed * 0.85f;
+            angularVelocity.y = (float)(rand() % 20 - 10) / 35.0f;  // 30. 0f → 35.0f
 
-            float ballSpeedLoss = (mass * pinSpeed) / ballMass;
-            ballVelocity -= impactDir * ballSpeedLoss * (1.0f + restitution);
+            // 볼링공은 거의 영향 안 받음 (질량이 5배 차이)
+            float ballSpeedLoss = (mass * pinSpeed) / ballMass * 0.8f;  // 계수 추가
+            ballVelocity -= impactDir * ballSpeedLoss * (1.0f + restitution) * 0.6f;  // 0.6배 감소
 
-            if (length(ballVelocity) < ballSpeed * 0.3f) {
-                ballVelocity = normalize(ballVelocity) * ballSpeed * 0.3f;
+            // 볼링공 최소 속도 보장 (공이 거의 안 느려짐)
+            if (length(ballVelocity) < ballSpeed * 0.4f) {  // 0.3f → 0.4f
+                ballVelocity = normalize(ballVelocity) * ballSpeed * 0.4f;
             }
         }
         else {
-            float restitution = 0.15f;
+            //  쓰러진 핀 - 공은 거의 영향 없음
+            float restitution = 0.10f;  // 0.15f → 0.10f (더 약하게)
 
             vec3 relativeVel = ballVelocity - velocity;
             float velAlongNormal = dot(relativeVel, impactDir);
 
             if (velAlongNormal < 0) return false;
 
-            float massRatio = mass / ballMass;
+            float massRatio = mass / ballMass;  // 약 0.20 (1: 5 비율)
             float impulse = (1.0f + restitution) * velAlongNormal / (1.0f + massRatio);
 
             vec3 pushDir = impactDir;
@@ -337,21 +352,23 @@ bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVeloc
             if (length(pushDir) > 0.001f) {
                 pushDir = normalize(pushDir);
 
-                velocity.x += pushDir.x * impulse * massRatio * 0.4f;
-                velocity.z += pushDir.z * impulse * massRatio * 0.4f;
-                velocity.y += impulse * massRatio * 0.02f;
+                //  쓰러진 핀도 약하게만 밀림
+                velocity.x += pushDir.x * impulse * massRatio * 0.35f;  // 0.4f → 0.35f
+                velocity.z += pushDir.z * impulse * massRatio * 0.35f;
+                velocity.y += impulse * massRatio * 0.015f;  // 0.02f → 0.015f
 
+                //  회전도 약하게
                 angularVelocity += vec3(
-                    pushDir.z * impulse * massRatio * 0.2f,
+                    pushDir.z * impulse * massRatio * 0.15f,  // 0.2f → 0.15f
                     0.0f,
-                    -pushDir.x * impulse * massRatio * 0.2f
+                    -pushDir.x * impulse * massRatio * 0.15f
                 );
             }
 
-            ballVelocity -= impactDir * impulse * 0.08f;
+            //  볼링공은 거의 영향 없음
+            ballVelocity -= impactDir * impulse * 0.05f;  // 0.08f → 0.05f
         }
 
-        // ✅ 합친 코드 기능: 충돌 사운드
 #ifdef _WIN32
         PlaySound(TEXT("sounds\\pin_hit.wav"), NULL, SND_FILENAME | SND_ASYNC);
 #endif
@@ -363,7 +380,7 @@ bool Pin::CheckCollisionWithBall(vec3 ballPos, float ballRadius, vec3& ballVeloc
 
 // ========== 핀-핀 충돌 ==========
 bool Pin::CheckCollisionWithPin(Pin& other) {
-    // ✅ 합친 코드 기능: 제거된 핀과는 충돌 안 함
+    //  합친 코드 기능: 제거된 핀과는 충돌 안 함
     if (!inPlay || !other.inPlay) return false;
 
     if (!isFalling && !isStanding && !other.isFalling && !other.isStanding) {
@@ -478,32 +495,70 @@ void Pin::ApplyImpact(vec3 impactDir, float force) {
     angularVelocity.z = impactDir.x * force * 2.0f;
 }
 
+// ========== CheckFloor 함수 (완전히 개선) ==========
 void Pin::CheckFloor() {
+    // ✅ 회전 각도 계산
     float rotMag = sqrt(rotation.x * rotation.x + rotation.z * rotation.z);
     float tiltRatio = std::min(1.0f, rotMag / 90.0f);
 
     float minY;
-    if (isStanding) minY = height / 2.0f;
-    else minY = (1.0f - tiltRatio) * (height / 2.0f) + tiltRatio * (radius * 0.6f);
+    if (isStanding) {
+        minY = height / 2.0f;
+    }
+    else {
+        // ✅ 쓰러진 핀의 바닥 높이를 더 정확하게 계산
+        // 완전히 쓰러지면 (90도) 핀이 옆으로 누워야 함
+        // 이때 높이는 핀의 최대 반지름
+        float maxRadius = 0.056f;  // GetProfilePoint에서 가장 큰 값
+
+        // 각도에 따라 선형 보간
+        // 0도 (서있음) → height/2
+        // 90도 (완전히 쓰러짐) → maxRadius
+        minY = (1.0f - tiltRatio) * (height / 2.0f) + tiltRatio * maxRadius;
+
+        // ✅ 너무 낮아지지 않도록 최소값 보장
+        if (minY < maxRadius * 0.8f) minY = maxRadius * 0.8f;
+    }
 
     if (position.y < minY) {
         position.y = minY;
 
-        if (velocity.y < -0.1f) velocity.y = -velocity.y * 0.10f;
-        else velocity.y = 0;
+        // ✅ 바닥 반발 거의 없음
+        if (velocity.y < -0.1f) {
+            velocity.y = -velocity.y * 0.08f;  // 0.10f → 0.08f (더 약하게)
+        }
+        else {
+            velocity.y = 0;
+        }
 
-        velocity.x *= 0.85f;
-        velocity.z *= 0.85f;
-        angularVelocity *= 0.82f;
+        // ✅ 바닥 마찰 강화
+        velocity.x *= 0.82f;  // 0.85f → 0.82f
+        velocity.z *= 0.82f;
+        angularVelocity *= 0.78f;  // 0.82f → 0.78f
     }
 
+    // ✅ 쓰러진 후 안정화 (회전을 더 빨리 멈춤)
     if (IsDown()) {
         if (length(velocity) < 0.12f) {
-            velocity *= 0.88f;
-            angularVelocity *= 0.80f;
+            velocity *= 0.85f;  // 0.88f → 0.85f
+            angularVelocity *= 0.75f;  // 0.80f → 0.75f
 
             if (length(velocity) < 0.05f) velocity = vec3(0.0f);
             if (length(angularVelocity) < 0.05f) angularVelocity = vec3(0.0f);
+        }
+
+        // ✅ 완전히 멈췄을 때 회전도 수평에 가깝게 보정
+        if (length(velocity) < 0.02f && length(angularVelocity) < 0.02f) {
+            // 회전을 90도에 가깝게 스냅 (옆으로 완전히 누운 상태)
+            if (abs(rotation.x) > 80.0f) {
+                rotation.x = (rotation.x > 0) ? 90.0f : -90.0f;
+            }
+            if (abs(rotation.z) > 80.0f) {
+                rotation.z = (rotation.z > 0) ? 90.0f : -90.0f;
+            }
+
+            velocity = vec3(0.0f);
+            angularVelocity = vec3(0.0f);
         }
     }
 }

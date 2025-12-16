@@ -1,81 +1,9 @@
-﻿  Game.cpp
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Game.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Game.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
+﻿  Pin.cpp
+C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Pin.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Pin.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
+  (소스 파일 'Pin.cpp'을(를) 컴파일하는 중)
   
 C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Common.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
+  (소스 파일 'Pin.cpp'을(를) 컴파일하는 중)
   
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Camera.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Ball.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Pin.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Lane.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'Game.cpp'을(를) 컴파일하는 중)
-  
-  UI.cpp
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Common.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Game.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Camera.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Ball.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Pin.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Lane.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'UI.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(479,42): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(485,42): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(491,45): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(497,43): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(645,75): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(650,75): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(655,84): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(660,78): warning C4267: '=': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(767,13): warning C4267: '초기화 중': 'size_t'에서 'int'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.cpp(768,17): warning C4244: '초기화 중': 'int'에서 'float'(으)로 변환하면서 데이터가 손실될 수 있습니다.
-  main.cpp
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\main.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Game.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Common.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Camera.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Ball.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Pin.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\Lane.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\CGproject\UI.h(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오.
-  (소스 파일 'main.cpp'을(를) 컴파일하는 중)
-  
-  코드를 생성하고 있습니다...
   CGproject.vcxproj -> C:\Users\user\Desktop\2ComputerGraphics-master(2)\ComputerGraphics-master\x64\Debug\CGproject.exe

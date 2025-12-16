@@ -354,17 +354,18 @@ void Game::Update() {
         break;
     }
 
-    // 카메라 모드별 시점 갱신
-    // BALL_FOLLOW는 볼링공이 굴러가지 않을 때에도 추적하게 하여 회색 화면을 방지한다.
-    if (camera.mode == CameraMode::BALL_FOLLOW) {
-        vec3 dir = (length(ball.velocity) > 0.1f) ? normalize(ball.velocity) : vec3(0.0f, 0.0f, -1.0f);
-        camera.UpdateBallFollow(ball.position, dir);
-    }
-    else if (camera.mode == CameraMode::TOP_VIEW) {
-        camera.UpdateTopView(ball.position);
-    }
-    else if (camera.mode == CameraMode::SIDE_VIEW) {
-        camera.UpdateSideView(ball.position);
+    // ✅ PIN_ACTION과 FRAME_END 상태에서는 카메라 자동 업데이트 안 함
+    if (state != GameState::PIN_ACTION && state != GameState::FRAME_END) {
+        if (camera.mode == CameraMode::BALL_FOLLOW) {
+            vec3 dir = (length(ball.velocity) > 0.1f) ? normalize(ball.velocity) : vec3(0.0f, 0.0f, -1.0f);
+            camera.UpdateBallFollow(ball.position, dir);
+        }
+        else if (camera.mode == CameraMode::TOP_VIEW) {
+            camera.UpdateTopView(ball.position);
+        }
+        else if (camera.mode == CameraMode::SIDE_VIEW) {
+            camera.UpdateSideView(ball.position);
+        }
     }
 
     glutPostRedisplay();
@@ -465,6 +466,21 @@ void Game::UpdatePinAction() {
         ball.Update(deltaTime);
     }
 
+    // ✅ PIN_ACTION 상태에서는 카메라를 핀 구역에 고정
+    // 공이 멈춘 후에도 핀들이 쓰러지는 장면을 잘 볼 수 있도록
+    if (camera.mode == CameraMode::BALL_FOLLOW) {
+        // 핀 구역을 바라보는 고정 카메라
+        vec3 pinCenter = vec3(0.0f, 0.0f, PIN_START_Z - 1.5f);  // 핀 중앙
+        vec3 cameraPos = vec3(0.0f, 2.5f, PIN_START_Z + 3.0f);  // 핀 뒤쪽 위
+
+        camera.position = cameraPos;
+
+        // 핀 중앙을 바라보도록
+        vec3 dir = normalize(pinCenter - cameraPos);
+        camera.pitch = degrees(asin(dir.y));
+        camera.yaw = degrees(atan2(dir.x, -dir.z)) - 90.0f;
+    }
+
     pinSettleTimer -= deltaTime;
 
     if (pinSettleTimer <= 0 || pins.AllSettled()) {
@@ -498,7 +514,6 @@ void Game::UpdatePinAction() {
         transitionTimer = 1.5f;
     }
 }
-
 void Game::UpdateFrameEnd() {
     transitionTimer -= deltaTime;
 
